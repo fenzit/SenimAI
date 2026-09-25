@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     
     # Gemini API settings (alternative LLM provider)
     GEMINI_API_KEY: Optional[str] = None
-    GEMINI_MODEL: str = "gemini-1.5-flash"
+    GEMINI_MODEL: str = "gemini-3.5-flash-lite"
 
     # Search Provider Settings
     SEARCH_PROVIDER: str = "tavily"  # "tavily", "serper", "duckduckgo", "mock"

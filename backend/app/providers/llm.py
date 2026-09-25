@@ -66,6 +66,8 @@ class OpenAILLMProvider(LLMProvider):
 
 
 class GeminiLLMProvider(LLMProvider):
+    FALLBACK_MODELS = ["gemini-3.5-flash-lite", "gemini-3.5-flash", "gemini-3.7-flash"]
+
     def __init__(
         self,
         api_key: Optional[str] = None,
@@ -73,7 +75,10 @@ class GeminiLLMProvider(LLMProvider):
         timeout: int = 40,
     ):
         self.api_key = api_key or settings.GEMINI_API_KEY
-        self.model = model or settings.GEMINI_MODEL
+        raw_model = model or settings.GEMINI_MODEL or "gemini-3.5-flash-lite"
+        if raw_model.startswith("models/"):
+            raw_model = raw_model[7:]
+        self.model = raw_model
         self.timeout = timeout
 
     async def generate_json(
@@ -85,28 +90,56 @@ class GeminiLLMProvider(LLMProvider):
         if not self.api_key:
             raise ValueError("GEMINI_API_KEY is not configured.")
 
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent?key={self.api_key}"
-        payload = {
-            "contents": [
-                {
-                    "role": "user",
-                    "parts": [
-                        {"text": f"SYSTEM INSTRUCTIONS:\n{system_prompt}\n\nUSER INPUT:\n{user_prompt}"}
-                    ],
-                }
-            ],
-            "generationConfig": {
-                "temperature": temperature,
-                "responseMimeType": "application/json",
-            },
-        }
+        models_to_try = [self.model] + [m for m in self.FALLBACK_MODELS if m != self.model]
 
+        last_error = None
         async with httpx.AsyncClient(timeout=self.timeout) as client:
-            response = await client.post(url, json=payload)
-            response.raise_for_status()
-            data = response.json()
-            text_content = data["candidates"][0]["content"]["parts"][0]["text"]
-            return json.loads(text_content)
+            for model_name in models_to_try:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={self.api_key}"
+                payload = {
+                    "contents": [
+                        {
+                            "role": "user",
+                            "parts": [
+                                {"text": f"SYSTEM INSTRUCTIONS:\n{system_prompt}\n\nUSER INPUT:\n{user_prompt}"}
+                            ],
+                        }
+                    ],
+                    "generationConfig": {
+                        "temperature": temperature,
+                        "responseMimeType": "application/json",
+                    },
+                }
+
+                try:
+                    response = await client.post(url, json=payload)
+                    if response.status_code == 404:
+                        logger.warning(f"Model {model_name} not found (404). Trying next fallback...")
+                        last_error = response.text
+                        continue
+
+                    response.raise_for_status()
+                    data = response.json()
+                    text_content = data["candidates"][0]["content"]["parts"][0]["text"].strip()
+
+                    # Clean markdown codeblocks if LLM included them
+                    if text_content.startswith("```"):
+                        lines = text_content.splitlines()
+                        if lines[0].startswith("```"):
+                            lines = lines[1:]
+                        if lines and lines[-1].startswith("```"):
+                            lines = lines[:-1]
+                        text_content = "\n".join(lines).strip()
+
+                    return json.loads(text_content)
+
+                except Exception as e:
+                    last_error = e
+                    if "404" in str(e) or (hasattr(e, "response") and getattr(e.response, "status_code", 0) == 404):
+                        continue
+                    raise e
+
+        raise ValueError(f"Gemini API request failed across models: {last_error}")
 
 
 class MockLLMProvider(LLMProvider):
