@@ -34,6 +34,13 @@ class SourceStance(str, Enum):
     INSUFFICIENT = "INSUFFICIENT"
 
 
+class EvidenceSufficiency(str, Enum):
+    DIRECT = "DIRECT"
+    COMBINED = "COMBINED"
+    INDIRECT = "INDIRECT"
+    INSUFFICIENT = "INSUFFICIENT"
+
+
 class Source(BaseModel):
     title: str = Field(..., description="Page or article title")
     url: str = Field(..., description="Link to source")
@@ -85,5 +92,9 @@ class ClaimResult(BaseModel):
     end_char: Optional[int] = Field(default=None, description="End offset in original text")
     why_verdict: Optional[str] = Field(
         default=None, description="Detailed explainability breakdown for 'Ask Why' feature"
+    )
+    evidence_sufficiency: Optional[EvidenceSufficiency] = Field(
+        default=EvidenceSufficiency.DIRECT,
+        description="DIRECT (single source), COMBINED (multi-hop synthesis), INDIRECT, or INSUFFICIENT",
     )
 

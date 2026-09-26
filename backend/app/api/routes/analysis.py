@@ -120,8 +120,9 @@ async def export_markdown(analysis: AnalyzeResponse) -> Dict[str, str]:
 
     for c in analysis.claims:
         badge = verdict_emojis.get(c.verdict.value, c.verdict.value)
+        suff_badge = f" `[{c.evidence_sufficiency.value}]`" if getattr(c, "evidence_sufficiency", None) else ""
         lines.append(f"#### Claim #{c.id}: \"{c.text}\"")
-        lines.append(f"- **Verdict:** {badge} (Confidence: `{int(c.confidence * 100)}%`)")
+        lines.append(f"- **Verdict:** {badge}{suff_badge} (Confidence: `{int(c.confidence * 100)}%`)")
         lines.append(f"- **Type:** `{c.type.value}`")
         lines.append(f"- **Explanation:** {c.explanation}")
         if c.why_verdict:

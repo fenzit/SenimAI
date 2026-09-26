@@ -34,7 +34,7 @@ class Analyzer:
         self.search_provider = search_provider or get_search_provider()
 
         self.claim_extractor = ClaimExtractor(self.llm)
-        self.search_service = SearchService(self.search_provider)
+        self.search_service = SearchService(self.search_provider, llm=self.llm)
         self.verifier = ClaimVerifier(self.llm)
         self.aggregator = Aggregator()
 
@@ -77,9 +77,10 @@ class Analyzer:
                     if claim.type == ClaimType.OPINION:
                         return await self.verifier.verify(claim=claim, sources=[], language=request.language)
 
-                    # External search for sources
+                    # External search for sources with context awareness
                     sources = await self.search_service.find_evidence(
                         claim=claim,
+                        context_text=request.text,
                         limit=settings.SEARCH_RESULTS_PER_CLAIM,
                     )
 
