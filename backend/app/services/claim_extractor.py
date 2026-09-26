@@ -14,17 +14,16 @@ RULES:
 2. Keep each claim independently verifiable.
 3. Preserve the original language of the text.
 4. Do NOT invent information or change original meaning.
-5. Identify subjective opinions or non-verifiable statements and classify them as 'opinion'.
-6. Extract 'original_quote' - the exact or near-exact phrase/subclause from the original text corresponding to this claim.
-7. Ignore greetings, generic conversational filler, and rhetorical questions.
-8. Return valid JSON only conforming to the schema below.
+5. Extract 'original_quote' - the exact or near-exact phrase/subclause from the original text corresponding to this claim.
+6. Ignore greetings, generic conversational filler, and rhetorical questions.
+7. Return valid JSON only conforming to the schema below.
 
-Allowed claim types:
-- factual: standard factual statements
-- numerical: claims involving statistics, numbers, measurements, quantities
-- temporal: claims involving dates, years, historical timelines, current status
-- comparative: claims comparing items (e.g., 'most popular', 'fastest', 'larger than')
-- opinion: subjective opinions, recommendations, aesthetic judgements
+CRITICAL CLASSIFICATION GUIDELINES (FACTUAL vs OPINION):
+- 'factual': Objective statements, technical recipes, cause-and-effect mechanics, sufficiency assertions, programming language behaviors, and scientific/engineering claims (e.g., "Replacing a list with a tuple is sufficient to prevent mutation" is FACTUAL because it makes a verifiable technical claim about language semantics, NOT an opinion).
+- 'numerical': Claims involving statistics, numbers, measurements, percentages, quantities.
+- 'temporal': Claims involving dates, years, historical timelines, current status.
+- 'comparative': Claims comparing items (e.g., 'most popular', 'fastest', 'larger than').
+- 'opinion': ONLY purely subjective personal aesthetic preferences, emotional tastes, or untestable philosophy (e.g., "Python is a beautiful language", "I like tuples more than lists"). Do NOT mark technical recommendations or sufficiency claims as opinion!
 
 JSON OUTPUT SCHEMA:
 {

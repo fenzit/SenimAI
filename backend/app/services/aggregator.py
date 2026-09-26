@@ -77,6 +77,18 @@ class Aggregator:
             ) / checkable_total
             score = round(max(0.0, min(1.0, raw_score)), 2)
 
+        # Determine overall verdict
+        if checkable_total <= 0:
+            overall_verdict = "OPINION"
+        elif counts[Verdict.CONTRADICTED] >= (counts[Verdict.SUPPORTED] + counts[Verdict.PARTIALLY_SUPPORTED]) and counts[Verdict.CONTRADICTED] > 0:
+            overall_verdict = "FALSE"
+        elif score >= 0.75 and counts[Verdict.CONTRADICTED] == 0:
+            overall_verdict = "TRUE"
+        elif counts[Verdict.UNVERIFIED] == checkable_total:
+            overall_verdict = "UNVERIFIED"
+        else:
+            overall_verdict = "MIXED"
+
         summary = Summary(
             total_claims=total,
             supported=counts[Verdict.SUPPORTED],
@@ -88,6 +100,7 @@ class Aggregator:
             verification_score=score,
             high_quality_sources_count=high_quality_sources,
             average_confidence=avg_conf,
+            overall_verdict=overall_verdict,
         )
 
         return AnalyzeResponse(

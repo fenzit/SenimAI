@@ -42,6 +42,12 @@ class Source(BaseModel):
     stance: Optional[SourceStance] = Field(
         default=SourceStance.NEUTRAL, description="Source stance towards claim"
     )
+    published_date: Optional[str] = Field(
+        default=None, description="Publication or index date if available"
+    )
+    freshness_label: Optional[str] = Field(
+        default=None, description="Human readable freshness (e.g., 'Recent', '2024', 'Archival')"
+    )
 
 
 class SupportingEvidence(BaseModel):

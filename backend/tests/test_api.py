@@ -1,7 +1,9 @@
 import pytest
 from fastapi.testclient import TestClient
+from app.core.config import settings
 from app.main import app
 
+settings.MOCK_MODE = True
 client = TestClient(app)
 
 

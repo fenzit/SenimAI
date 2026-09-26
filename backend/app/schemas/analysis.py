@@ -43,6 +43,10 @@ class Summary(BaseModel):
     average_confidence: float = Field(
         default=0.0, description="Average verification confidence across all claims"
     )
+    overall_verdict: Optional[str] = Field(
+        default="VERIFIED",
+        description="Aggregate overall status: 'TRUE' | 'FALSE' | 'MIXED' | 'UNVERIFIED' | 'OPINION'",
+    )
 
 
 class AnalyzeResponse(BaseModel):

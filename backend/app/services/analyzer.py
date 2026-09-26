@@ -11,6 +11,7 @@ from app.schemas.claim import (
     ClaimResult,
     ClaimType,
     Source,
+    SourceStance,
     SourceTier,
     SupportingEvidence,
     Verdict,

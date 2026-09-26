@@ -38,6 +38,9 @@ class EvidenceProcessor:
         for r in search_results:
             clean_snip = EvidenceProcessor.sanitize_snippet(r.snippet)
             quality = classify_source_tier(r.domain)
+            freshness = None
+            if r.published_date:
+                freshness = f"Published: {r.published_date}"
             sources.append(
                 Source(
                     title=r.title or f"Source from {r.domain}",
@@ -45,6 +48,8 @@ class EvidenceProcessor:
                     domain=r.domain or "web",
                     snippet=clean_snip,
                     quality=quality,
+                    published_date=r.published_date,
+                    freshness_label=freshness,
                 )
             )
         return sources
@@ -56,9 +61,10 @@ class EvidenceProcessor:
 
         evidence_blocks = []
         for i, src in enumerate(sources, start=1):
+            date_info = f"\nPublished Date: {src.published_date}" if src.published_date else ""
             evidence_blocks.append(
                 f"[Source {i}]\n"
-                f"Domain: {src.domain} (Quality: {src.quality.value})\n"
+                f"Domain: {src.domain} (Quality: {src.quality.value}){date_info}\n"
                 f"Title: {src.title}\n"
                 f"URL: {src.url}\n"
                 f"Excerpt: {src.snippet}"

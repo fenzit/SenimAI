@@ -98,9 +98,10 @@ async def export_markdown(analysis: AnalyzeResponse) -> Dict[str, str]:
     }
 
     score_pct = int(analysis.summary.verification_score * 100)
+    overall_verdict_badge = analysis.summary.overall_verdict or "MIXED"
     lines = [
         f"# 🛡️ AI Trust Verification Report — ID: `{analysis.analysis_id}`",
-        f"**Verification Score:** `{score_pct}%` | **Total Claims:** `{analysis.summary.total_claims}`",
+        f"**Verdict:** `{overall_verdict_badge}` | **Trust Score:** `{score_pct}%` | **Total Claims:** `{analysis.summary.total_claims}`",
         "",
         "### 📊 Summary Breakdown",
         f"- 🟢 **Supported:** {analysis.summary.supported}",
@@ -127,7 +128,8 @@ async def export_markdown(analysis: AnalyzeResponse) -> Dict[str, str]:
             for s in c.sources:
                 quality_badge = f"[{s.quality.value}]"
                 stance_badge = f"({s.stance.value})" if s.stance else ""
-                lines.append(f"  - [{s.title}]({s.url}) `{s.domain}` {quality_badge} {stance_badge}")
+                freshness = f" • {s.published_date}" if s.published_date else ""
+                lines.append(f"  - [{s.title}]({s.url}) `{s.domain}` {quality_badge} {stance_badge}{freshness}")
         lines.append("")
 
     lines.append("---")
