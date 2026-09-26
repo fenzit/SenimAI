@@ -100,19 +100,29 @@ async def export_markdown(analysis: AnalyzeResponse) -> Dict[str, str]:
 
     score_pct = int(analysis.summary.verification_score * 100)
     overall_verdict_badge = analysis.summary.overall_verdict or "MIXED"
+    summary_line = analysis.summary.summary_line or f"{analysis.summary.supported} supported · {analysis.summary.contradicted} contradicted"
+    confidence_label = analysis.summary.evidence_confidence_label or "Medium"
+
+    relevance_emojis = {
+        "DIRECT": "🟢 Direct Evidence",
+        "RELATED": "🟡 Related Context",
+        "NOT_RELEVANT": "⚪ Background / Indirect",
+    }
+
     lines = [
         f"# 🛡️ AI Trust Verification Report — ID: `{analysis.analysis_id}`",
         f"**Verdict:** `{overall_verdict_badge}` | **Trust Score:** `{score_pct}%` | **Verified Claims:** `{analysis.summary.verified_claims_count}/{analysis.summary.total_claims}`",
-        f"**Evidence Status:** `{analysis.summary.evidence_status}` | **Confidence:** `{int(analysis.summary.average_confidence * 100)}%`",
+        f"**Summary:** `{summary_line}`",
+        f"**Evidence Status:** `{analysis.summary.evidence_status}` | **Evidence Confidence:** `{confidence_label}` ({int(analysis.summary.average_confidence * 100)}%)",
         "",
         "### 📊 Summary Breakdown",
-        f"- 🟢 **Supported:** {analysis.summary.supported}",
-        f"- 🔴 **Contradicted:** {analysis.summary.contradicted}",
+        f"- 🟢 **Supported (Confirmed):** {analysis.summary.supported}",
+        f"- 🔴 **Contradicted (False):** {analysis.summary.contradicted}",
         f"- 🟡 **Partially Supported:** {analysis.summary.partially_supported}",
-        f"- ⚠️ **Nuanced / Ambiguous:** {analysis.summary.nuanced}",
-        f"- ⚪ **Unverified (No Evidence):** {analysis.summary.unverified}",
-        f"- 🟣 **Opinions:** {analysis.summary.not_fact_checkable}",
-        f"- 🟠 **Conflicting:** {analysis.summary.conflicting}",
+        f"- ⚠️ **Nuanced / Contextual:** {analysis.summary.nuanced}",
+        f"- ⚪ **Unverified (Insufficient Evidence):** {analysis.summary.unverified}",
+        f"- 🟣 **Subjective Opinions:** {analysis.summary.not_fact_checkable}",
+        f"- 🟠 **Conflicting Sources:** {analysis.summary.conflicting}",
         "",
         "---",
         "### 🔍 Detailed Claims Analysis",
@@ -127,14 +137,16 @@ async def export_markdown(analysis: AnalyzeResponse) -> Dict[str, str]:
         lines.append(f"- **Type:** `{c.type.value}`")
         lines.append(f"- **Explanation:** {c.explanation}")
         if c.why_verdict:
-            lines.append(f"- **Why:** {c.why_verdict}")
+            lines.append(f"- **Why / Reasoning:** {c.why_verdict}")
         if c.sources:
-            lines.append("- **Sources:**")
+            lines.append("- **Sources & Evidence Relevance:**")
             for s in c.sources:
                 quality_badge = f"[{s.quality.value}]"
                 stance_badge = f"({s.stance.value})" if s.stance else ""
+                rel_badge = relevance_emojis.get(getattr(s, "relevance", "RELATED"), "🟡 Related Context")
+                reason_suffix = f" — *{s.relevance_reason}*" if getattr(s, "relevance_reason", None) else ""
                 freshness = f" • {s.published_date}" if s.published_date else ""
-                lines.append(f"  - [{s.title}]({s.url}) `{s.domain}` {quality_badge} {stance_badge}{freshness}")
+                lines.append(f"  - [{s.title}]({s.url}) `{s.domain}` {quality_badge} {stance_badge} | {rel_badge}{reason_suffix}{freshness}")
         lines.append("")
 
     lines.append("---")

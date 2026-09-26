@@ -21,21 +21,27 @@ Your sole mission is to evaluate the provided CLAIM against the provided EXTERNA
 
 CRITICAL INTEGRITY & MULTI-HOP REASONING RULES:
 1. DO NOT invent facts out of nowhere, but DO APPLY LOGICAL DEDUCTION on the provided evidence. If the evidence establishes the underlying mechanism, deduce the logical outcome.
-2. MULTI-HOP INFERENCE & CAUSAL REASONING:
+2. SEMANTIC EVIDENCE RECOGNITION:
+   - Recognize paraphrases and synonyms. For example, if evidence states "stateless HTTP transactions", "HTTP is designed as a stateless protocol", or "server does not maintain client state across HTTP requests", this DIRECTLY SUPPORTS claims asserting that HTTP is stateless.
+   - For PostgreSQL: If official documentation states "B-tree index can be used for queries involving LIKE if anchored to beginning (foo%), but NOT col LIKE '%bar'", this DIRECTLY CONTRADICTS claims that "B-tree index automatically accelerates any LIKE query regardless of leading %".
+   - For CPython caching: If evidence states CPython caches integers in range [-5, 256], deduce that comparing arbitrary integers outside this range with `is` is not guaranteed to be True, and `is` tests identity while `==` tests equality.
+3. MULTI-HOP INFERENCE & CAUSAL REASONING:
    - Mechanism & Concurrency: If evidence states "asyncio uses a single-threaded cooperative event loop where tasks must await I/O", deduce that CPU-bound tasks running in a single thread cannot execute in parallel and will block the loop. Verdict: CONTRADICTED, Sufficiency: COMBINED.
    - Causal Sophisms / False Deductions: If evidence confirms Premise A ("HTTP is stateless") but also shows ("Servers maintain sessions and state via cookies/storage"), deduce that the inference "therefore server cannot store state" is logically false. Verdict: CONTRADICTED or PARTIALLY_SUPPORTED with explicit explanation of the invalid deduction.
-   - Identity vs Value / Caching: If evidence states CPython caches integers in range [-5, 256], deduce that comparing arbitrary integers outside this range with `is` (identity) is not guaranteed to be true, and `is` tests identity while `==` tests value equality. Verdict: CONTRADICTED or NUANCED.
-3. If a single source directly confirms or refutes the exact claim, mark evidence_sufficiency: 'DIRECT'.
-4. If the conclusion is derived from synthesizing multiple sources/premises or applying logical deduction to established mechanisms, mark evidence_sufficiency: 'COMBINED'.
-5. If the evidence provides only indirect/circumstantial support, mark evidence_sufficiency: 'INDIRECT'.
-6. Only return 'UNVERIFIED' with evidence_sufficiency: 'INSUFFICIENT' if the provided evidence has ZERO relevant information about the concepts/mechanisms in the claim.
-7. If the claim touches upon a subtle technical distinction or terminology dispute (e.g. Python argument passing being 'call by sharing / object reference' rather than pure 'by value' or 'by reference'), return 'NUANCED'.
-8. If reputable sources in the evidence directly contradict each other, return 'CONFLICTING'.
-9. If the evidence directly or through multi-hop deduction refutes the claim, return 'CONTRADICTED'.
-10. If the evidence confirms the claim, return 'SUPPORTED'.
-11. Provide a clear, objective explanation in the requested language ({language}) citing specific details and logical steps.
-12. Provide a 'why_verdict' breakdown explaining the step-by-step reasoning or logical chain (Premise 1 -> Premise 2 -> Deduction).
-13. For each source evaluated, classify its stance: 'SUPPORTS', 'CONTRADICTS', 'NEUTRAL', or 'INSUFFICIENT'.
+4. If a single source directly confirms or refutes the exact claim, mark evidence_sufficiency: 'DIRECT'.
+5. If the conclusion is derived from synthesizing multiple sources/premises or applying logical deduction to established mechanisms, mark evidence_sufficiency: 'COMBINED'.
+6. If the evidence provides only indirect/circumstantial support, mark evidence_sufficiency: 'INDIRECT'.
+7. Only return 'UNVERIFIED' with evidence_sufficiency: 'INSUFFICIENT' if the provided evidence has ZERO relevant information about the concepts/mechanisms in the claim.
+8. If the claim touches upon a subtle technical distinction or terminology dispute (e.g. Python argument passing being 'call by sharing / object reference' rather than pure 'by value' or 'by reference'), return 'NUANCED'.
+9. If reputable sources in the evidence directly contradict each other, return 'CONFLICTING'.
+10. If the evidence directly or through multi-hop deduction refutes the claim, return 'CONTRADICTED'.
+11. If the evidence confirms the claim, return 'SUPPORTED'.
+12. Provide a clear, objective explanation in the requested language ({language}) citing specific details and logical steps.
+13. Provide a 'why_verdict' breakdown explaining the step-by-step reasoning or logical chain (Premise 1 -> Premise 2 -> Deduction).
+14. For each source evaluated, classify:
+    - stance: 'SUPPORTS' | 'CONTRADICTS' | 'NEUTRAL' | 'INSUFFICIENT'
+    - relevance: 'DIRECT' | 'RELATED' | 'NOT_RELEVANT'
+    - relevance_reason: 'Brief 1-sentence explanation why this source is direct, related, or irrelevant'
 
 VERDICTS:
 - SUPPORTED
@@ -62,7 +68,9 @@ Return JSON only:
   "source_stances": [
     {
       "source_index": 1,
-      "stance": "SUPPORTS | CONTRADICTS | NEUTRAL | INSUFFICIENT"
+      "stance": "SUPPORTS | CONTRADICTS | NEUTRAL | INSUFFICIENT",
+      "relevance": "DIRECT | RELATED | NOT_RELEVANT",
+      "relevance_reason": "Specific reason why this source is direct, related, or irrelevant"
     }
   ],
   "supporting_evidence": [
@@ -177,21 +185,32 @@ class ClaimVerifier:
             )
             why_verdict = result.get("why_verdict", explanation)
 
-            # Update source stances
+            # Update source stances and relevance
             stances_map = {}
+            relevance_map = {}
+            relevance_reason_map = {}
             for st in result.get("source_stances", []):
                 s_idx = int(st.get("source_index", 0))
                 s_val = str(st.get("stance", "NEUTRAL")).upper()
+                r_val = str(st.get("relevance", "RELATED")).upper()
+                r_reason = st.get("relevance_reason")
                 try:
                     stances_map[s_idx] = SourceStance(s_val)
                 except ValueError:
                     stances_map[s_idx] = SourceStance.NEUTRAL
+                relevance_map[s_idx] = r_val if r_val in ("DIRECT", "RELATED", "NOT_RELEVANT") else "RELATED"
+                if r_reason:
+                    relevance_reason_map[s_idx] = str(r_reason)
 
             updated_sources: List[Source] = []
             for i, src in enumerate(sources, start=1):
                 src_copy = src.model_copy()
                 if i in stances_map:
                     src_copy.stance = stances_map[i]
+                if i in relevance_map:
+                    src_copy.relevance = relevance_map[i]
+                if i in relevance_reason_map:
+                    src_copy.relevance_reason = relevance_reason_map[i]
                 updated_sources.append(src_copy)
 
             supporting_ev = []
@@ -222,6 +241,7 @@ class ClaimVerifier:
 
         except Exception as e:
             logger.error(f"Error during verification for claim #{claim.id}: {e}")
+            is_rate_limit = "429" in str(e) or "quota" in str(e).lower()
             return ClaimResult(
                 id=claim.id,
                 text=claim.text,
@@ -229,11 +249,13 @@ class ClaimVerifier:
                 verdict=Verdict.UNVERIFIED,
                 confidence=0.3,
                 explanation=(
-                    f"Произошла ошибка при верификации: {str(e)[:100]}. Требуется ручная проверка."
+                    ("⚠️ Верификация временно приостановлена из-за лимита запросов к внешнему сервису. Повторите попытку через несколько секунд." if is_rate_limit else f"Произошла ошибка при верификации: {str(e)[:100]}. Требуется повторный запрос.")
                     if language == "ru"
-                    else f"Verification error: {str(e)[:100]}. Manual check recommended."
+                    else ("⚠️ Verification temporarily paused due to external API rate limit. Please retry shortly." if is_rate_limit else f"Verification error: {str(e)[:100]}.")
                 ),
-                why_verdict=f"Ошибка обработки: {str(e)[:100]}",
+                why_verdict=(
+                    "Внешний сервис верификации временно перегружен (Rate Limit 429)." if is_rate_limit else f"Ошибка обработки: {str(e)[:100]}"
+                ),
                 sources=sources,
                 supporting_evidence=[],
                 original_quote=claim.original_quote,

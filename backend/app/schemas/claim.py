@@ -50,6 +50,12 @@ class Source(BaseModel):
     stance: Optional[SourceStance] = Field(
         default=SourceStance.NEUTRAL, description="Source stance towards claim"
     )
+    relevance: Optional[str] = Field(
+        default="RELATED", description="'DIRECT' | 'RELATED' | 'NOT_RELEVANT'"
+    )
+    relevance_reason: Optional[str] = Field(
+        default=None, description="Why this source is or isn't relevant to the claim"
+    )
     published_date: Optional[str] = Field(
         default=None, description="Publication or index date if available"
     )

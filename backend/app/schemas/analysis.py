@@ -55,6 +55,14 @@ class Summary(BaseModel):
         default="VERIFIED",
         description="Aggregate overall status: 'TRUE' | 'FALSE' | 'MIXED' | 'NUANCED' | 'INSUFFICIENT_EVIDENCE' | 'OPINION'",
     )
+    summary_line: Optional[str] = Field(
+        default=None,
+        description="Human readable summary line e.g. '2 confirmed · 3 insufficient · 2 contradicted · 1 partially supported'",
+    )
+    evidence_confidence_label: Optional[str] = Field(
+        default="Medium",
+        description="'High' | 'Medium' | 'Low'",
+    )
 
 
 class AnalyzeResponse(BaseModel):

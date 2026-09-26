@@ -45,11 +45,15 @@ def classify_source_tier(domain: str) -> SourceTier:
     primary_official = [
         "docs.python.org",
         "python.org",
+        "postgresql.org",
         "developer.mozilla.org",
         "w3.org",
         "ietf.org",
         "iso.org",
         "ecma-international.org",
+        "sqlite.org",
+        "redis.io",
+        "kernel.org",
         "who.int",
         "nasa.gov",
         "un.org",
@@ -354,26 +358,83 @@ class MockSearchProvider(SearchProvider):
             ]
 
 
+class DuckDuckGoWebSearchProvider(SearchProvider):
+    """Real web search provider using DuckDuckGo HTML endpoint to retrieve official documentation and web sources."""
+
+    def __init__(self, timeout: int = 12):
+        self.timeout = timeout
+
+    async def search(self, query: str, limit: int = 5) -> List[SearchResult]:
+        results: List[SearchResult] = []
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        }
+        url = "https://html.duckduckgo.com/html/"
+        clean_q = re.sub(r'["\';:]', " ", query).strip()
+
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout, headers=headers) as client:
+                resp = await client.post(url, data={"q": clean_q})
+                if resp.status_code == 200:
+                    pattern = re.compile(
+                        r'<a[^>]+class="result__snippet"[^>]*href="([^"]+)"[^>]*>(.*?)</a>',
+                        re.DOTALL,
+                    )
+                    matches = pattern.findall(resp.text)
+                    for raw_url, snip in matches[:limit + 2]:
+                        if "uddg=" in raw_url:
+                            parsed = urllib.parse.parse_qs(urllib.parse.urlparse(raw_url).query)
+                            actual_url = parsed.get("uddg", [raw_url])[0]
+                        else:
+                            actual_url = raw_url
+
+                        clean_snip = html.unescape(re.sub(r"<[^>]+>", "", snip)).strip()
+                        if len(clean_snip) > 20:
+                            domain = extract_domain(actual_url)
+                            results.append(
+                                SearchResult(
+                                    title=f"{domain} documentation / web article",
+                                    url=actual_url,
+                                    domain=domain,
+                                    snippet=clean_snip,
+                                    score=0.9,
+                                )
+                            )
+        except Exception as e:
+            logger.debug(f"DDG Web HTML search failed: {e}")
+
+        return results[:limit]
+
+
 class HybridSearchProvider(SearchProvider):
-    """Intelligent fallback search provider that combines configured providers with Wikipedia and official docs."""
+    """Intelligent multi-tier search provider that combines configured providers with DDG Web and Wikipedia."""
 
     def __init__(self, primary: SearchProvider):
         self.primary = primary
+        self.ddg_web = DuckDuckGoWebSearchProvider()
         self.wiki_provider = WikipediaSearchProvider()
         self.ddg_instant = DuckDuckGoInstantProvider()
 
     async def search(self, query: str, limit: int = 5) -> List[SearchResult]:
         results: List[SearchResult] = []
-        
+
         # 1. Try primary search provider (Tavily, Serper, etc.)
         try:
             primary_results = await self.primary.search(query=query, limit=limit)
             if primary_results:
                 results.extend(primary_results)
         except Exception as e:
-            logger.warning(f"Primary search failed: {e}. Falling back to Wikipedia and Instant Docs.")
+            logger.warning(f"Primary search failed: {e}. Falling back to DDG Web & Wikipedia.")
 
-        # 2. If fewer than 2 results found, augment with Wikipedia and DDG Instant
+        # 2. Augment with DDG Web Search (fetches real technical documentation)
+        try:
+            ddg_results = await self.ddg_web.search(query=query, limit=limit)
+            if ddg_results:
+                results.extend(ddg_results)
+        except Exception as e:
+            logger.debug(f"DDG Web search failed: {e}")
+
+        # 3. If fewer than 2 results found, augment with Wikipedia and DDG Instant
         if len(results) < 2:
             try:
                 wiki_results = await self.wiki_provider.search(query=query, limit=limit)
@@ -382,12 +443,12 @@ class HybridSearchProvider(SearchProvider):
                 logger.debug(f"Wikipedia fallback failed: {e}")
 
             try:
-                ddg_results = await self.ddg_instant.search(query=query, limit=2)
-                results.extend(ddg_results)
+                instant_results = await self.ddg_instant.search(query=query, limit=2)
+                results.extend(instant_results)
             except Exception as e:
-                logger.debug(f"DDG fallback failed: {e}")
+                logger.debug(f"DDG Instant fallback failed: {e}")
 
-        # Deduplicate results by URL domain and title
+        # Deduplicate results by URL
         seen_urls = set()
         deduped: List[SearchResult] = []
         for r in results:
@@ -395,7 +456,7 @@ class HybridSearchProvider(SearchProvider):
                 seen_urls.add(r.url)
                 deduped.append(r)
 
-        # Sort by tier priority (High tier official/wiki sources first)
+        # Sort by tier priority (High tier official docs first)
         deduped.sort(key=lambda s: 0 if classify_source_tier(s.domain) == SourceTier.HIGH else 1)
         return deduped[:limit]
 
@@ -403,7 +464,7 @@ class HybridSearchProvider(SearchProvider):
 def get_search_provider() -> SearchProvider:
     if settings.MOCK_MODE:
         return MockSearchProvider()
-    
+
     if settings.SEARCH_PROVIDER == "tavily" and settings.TAVILY_API_KEY:
         primary = TavilySearchProvider()
     elif settings.SEARCH_PROVIDER == "serper" and settings.SERPER_API_KEY:
@@ -411,7 +472,7 @@ def get_search_provider() -> SearchProvider:
     elif settings.SEARCH_PROVIDER == "wikipedia":
         primary = WikipediaSearchProvider()
     else:
-        # Default robust fallback
-        primary = WikipediaSearchProvider()
+        # Default robust fallback using DDG Web Search
+        primary = DuckDuckGoWebSearchProvider()
 
     return HybridSearchProvider(primary)

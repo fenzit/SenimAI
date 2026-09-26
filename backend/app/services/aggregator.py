@@ -114,6 +114,30 @@ class Aggregator:
             else:
                 overall_verdict = "MIXED"
 
+        # Build human-readable summary line
+        parts = []
+        if counts[Verdict.SUPPORTED] > 0:
+            parts.append(f"{counts[Verdict.SUPPORTED]} confirmed")
+        if counts[Verdict.CONTRADICTED] > 0:
+            parts.append(f"{counts[Verdict.CONTRADICTED]} contradicted")
+        if counts[Verdict.PARTIALLY_SUPPORTED] > 0:
+            parts.append(f"{counts[Verdict.PARTIALLY_SUPPORTED]} partially supported")
+        if counts[Verdict.NUANCED] > 0:
+            parts.append(f"{counts[Verdict.NUANCED]} nuanced")
+        if counts[Verdict.UNVERIFIED] > 0:
+            parts.append(f"{counts[Verdict.UNVERIFIED]} insufficient evidence")
+        if counts[Verdict.NOT_FACT_CHECKABLE] > 0:
+            parts.append(f"{counts[Verdict.NOT_FACT_CHECKABLE]} opinion")
+        summary_line = " · ".join(parts) if parts else "0 claims"
+
+        # Evidence confidence label
+        if avg_conf >= 0.8:
+            evidence_confidence_label = "High"
+        elif avg_conf >= 0.55:
+            evidence_confidence_label = "Medium"
+        else:
+            evidence_confidence_label = "Low"
+
         summary = Summary(
             total_claims=total,
             supported=counts[Verdict.SUPPORTED],
@@ -129,6 +153,8 @@ class Aggregator:
             high_quality_sources_count=high_quality_sources,
             average_confidence=avg_conf,
             overall_verdict=overall_verdict,
+            summary_line=summary_line,
+            evidence_confidence_label=evidence_confidence_label,
         )
 
         return AnalyzeResponse(

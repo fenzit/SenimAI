@@ -66,7 +66,7 @@ class OpenAILLMProvider(LLMProvider):
 
 
 class GeminiLLMProvider(LLMProvider):
-    FALLBACK_MODELS = ["gemini-3.5-flash-lite", "gemini-3.5-flash", "gemini-3.7-flash"]
+    FALLBACK_MODELS = ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-2.0-flash", "gemini-3.5-flash-lite"]
 
     def __init__(
         self,
@@ -75,7 +75,7 @@ class GeminiLLMProvider(LLMProvider):
         timeout: int = 40,
     ):
         self.api_key = api_key or settings.GEMINI_API_KEY
-        raw_model = model or settings.GEMINI_MODEL or "gemini-3.5-flash-lite"
+        raw_model = model or settings.GEMINI_MODEL or "gemini-2.5-flash"
         if raw_model.startswith("models/"):
             raw_model = raw_model[7:]
         self.model = raw_model
@@ -111,33 +111,48 @@ class GeminiLLMProvider(LLMProvider):
                     },
                 }
 
-                try:
-                    response = await client.post(url, json=payload)
-                    if response.status_code == 404:
-                        logger.warning(f"Model {model_name} not found (404). Trying next fallback...")
-                        last_error = response.text
-                        continue
+                # Retry up to 3 times for transient 429 or 503 errors with backoff
+                for attempt in range(3):
+                    try:
+                        response = await client.post(url, json=payload)
+                        if response.status_code == 404:
+                            logger.warning(f"Model {model_name} not found (404). Trying next fallback...")
+                            last_error = response.text
+                            break
 
-                    response.raise_for_status()
-                    data = response.json()
-                    text_content = data["candidates"][0]["content"]["parts"][0]["text"].strip()
+                        if response.status_code in (429, 503):
+                            delay = (attempt + 1) * 2.0
+                            logger.warning(f"Gemini {model_name} rate limit (429/503). Retrying in {delay}s (attempt {attempt+1}/3)...")
+                            await asyncio.sleep(delay)
+                            continue
 
-                    # Clean markdown codeblocks if LLM included them
-                    if text_content.startswith("```"):
-                        lines = text_content.splitlines()
-                        if lines[0].startswith("```"):
-                            lines = lines[1:]
-                        if lines and lines[-1].startswith("```"):
-                            lines = lines[:-1]
-                        text_content = "\n".join(lines).strip()
+                        response.raise_for_status()
+                        data = response.json()
+                        text_content = data["candidates"][0]["content"]["parts"][0]["text"].strip()
 
-                    return json.loads(text_content)
+                        # Clean markdown codeblocks if LLM included them
+                        if text_content.startswith("```"):
+                            lines = text_content.splitlines()
+                            if lines[0].startswith("```"):
+                                lines = lines[1:]
+                            if lines and lines[-1].startswith("```"):
+                                lines = lines[:-1]
+                            text_content = "\n".join(lines).strip()
 
-                except Exception as e:
-                    last_error = e
-                    if "404" in str(e) or (hasattr(e, "response") and getattr(e.response, "status_code", 0) == 404):
-                        continue
-                    raise e
+                        return json.loads(text_content)
+
+                    except Exception as e:
+                        last_error = e
+                        if "429" in str(e) or "503" in str(e):
+                            delay = (attempt + 1) * 2.0
+                            logger.warning(f"Gemini {model_name} error {e}. Backoff {delay}s...")
+                            await asyncio.sleep(delay)
+                            continue
+                        if "404" in str(e):
+                            break
+                        # If not rate limit or 404, log and break to next model
+                        logger.warning(f"Gemini {model_name} attempt {attempt+1} failed: {e}")
+                        break
 
         raise ValueError(f"Gemini API request failed across models: {last_error}")
 
