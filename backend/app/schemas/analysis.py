@@ -37,6 +37,12 @@ class Summary(BaseModel):
         le=1.0,
         description="Evidence coverage score between 0.0 and 1.0 (0% to 100%)",
     )
+    high_quality_sources_count: int = Field(
+        default=0, description="Number of reputable high-tier sources used in verification"
+    )
+    average_confidence: float = Field(
+        default=0.0, description="Average verification confidence across all claims"
+    )
 
 
 class AnalyzeResponse(BaseModel):
@@ -44,3 +50,9 @@ class AnalyzeResponse(BaseModel):
     summary: Summary
     claims: List[ClaimResult]
     original_text: Optional[str] = Field(default=None, description="Original input text")
+    processing_time_ms: Optional[float] = Field(
+        default=None, description="End-to-end processing latency in milliseconds"
+    )
+    timestamp: Optional[str] = Field(
+        default=None, description="ISO timestamp of analysis"
+    )

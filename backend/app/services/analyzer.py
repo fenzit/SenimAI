@@ -38,11 +38,17 @@ class Analyzer:
         self.aggregator = Aggregator()
 
     async def analyze(self, request: AnalyzeRequest) -> AnalyzeResponse:
+        import time
+
+        start_time = time.perf_counter()
         logger.info(f"Starting analysis for text length={len(request.text)}, lang={request.language}")
 
         # Check for Mock Mode or offline fallback
         if settings.MOCK_MODE:
-            return self.get_mock_analysis(request.text, request.language)
+            elapsed_ms = round((time.perf_counter() - start_time) * 1000, 1)
+            resp = self.get_mock_analysis(request.text, request.language)
+            resp.processing_time_ms = elapsed_ms
+            return resp
 
         # Step 1: Claim Extraction
         claims = await self.claim_extractor.extract(
@@ -52,9 +58,11 @@ class Analyzer:
 
         if not claims:
             logger.warning("No claims extracted from input text.")
+            elapsed_ms = round((time.perf_counter() - start_time) * 1000, 1)
             return self.aggregator.aggregate(
                 claims=[],
                 original_text=request.text,
+                processing_time_ms=elapsed_ms,
             )
 
         logger.info(f"Extracted {len(claims)} claims. Beginning verification pipeline...")
@@ -91,7 +99,11 @@ class Analyzer:
                         verdict=Verdict.UNVERIFIED,
                         confidence=0.3,
                         explanation=f"Ошибка обработки: {str(e)[:100]}",
+                        why_verdict=f"Ошибка: {str(e)[:100]}",
                         sources=[],
+                        original_quote=claim.original_quote,
+                        start_char=claim.start_char,
+                        end_char=claim.end_char,
                     )
 
         results: List[ClaimResult] = await asyncio.gather(
@@ -99,12 +111,14 @@ class Analyzer:
         )
 
         # Step 4: Aggregate into final structured response
+        elapsed_ms = round((time.perf_counter() - start_time) * 1000, 1)
         response = self.aggregator.aggregate(
             claims=results,
             original_text=request.text,
+            processing_time_ms=elapsed_ms,
         )
         logger.info(
-            f"Analysis completed: {response.summary.total_claims} claims, score={response.summary.verification_score}"
+            f"Analysis completed in {elapsed_ms}ms: {response.summary.total_claims} claims, score={response.summary.verification_score}"
         )
         return response
 

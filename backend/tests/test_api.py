@@ -61,3 +61,20 @@ def test_analyze_mock_mode():
     assert "confidence" in claim
     assert "explanation" in claim
     assert "sources" in claim
+
+
+def test_export_markdown():
+    payload = {
+        "text": "Первый человек высадился на Марсе в 1969 году.",
+        "language": "ru",
+        "max_claims": 5,
+    }
+    analyze_resp = client.post("/api/v1/analyze", json=payload)
+    assert analyze_resp.status_code == 200
+
+    export_resp = client.post("/api/v1/export/markdown", json=analyze_resp.json())
+    assert export_resp.status_code == 200
+    export_data = export_resp.json()
+    assert "markdown" in export_data
+    assert "# 🛡️ AI Trust Verification Report" in export_data["markdown"]
+
