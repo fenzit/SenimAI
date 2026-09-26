@@ -185,3 +185,19 @@ nav { gap:42px; margin-right:auto; margin-left:auto; }nav a { color:#5b5953; fon
 /* A quiet announcement strip keeps the landing page's information hierarchy close to the Tavily reference. */
 .site-header::before { content:'Senim AI · проверяйте ответы AI через внешние источники и объяснимые verdicts'; display:flex; align-items:center; justify-content:center; min-height:38px; padding:7px 20px; color:#21493b; background:#9fc9b8; font-size:12px; font-weight:600; letter-spacing:-.01em; text-align:center; }
 @media (max-width:620px) { .site-header::before { min-height:34px; padding:7px 14px; font-size:10px; } }
+
+/* Keep the actual verifier above the fold. It expands only after the user starts writing. */
+@media (min-width:901px) {
+  .hero.hero-focused { min-height:calc(100svh - 126px); padding:42px 30px 18px; }
+  .hero-focused h1 { max-width:760px; font-size:clamp(46px,4.6vw,64px); }
+  .hero-focused .hero-lede { margin-top:14px; }
+  .hero-actions { margin-top:19px; }
+  .proof-workspace { margin-top:16px; }
+  .workspace-top { min-height:34px; padding:5px 12px 7px 15px; }
+  .input-caption { padding:10px 16px; }
+  .workspace-input textarea { min-height:64px; padding:10px 18px; font-size:13px; line-height:1.45; }
+  .proof-workspace:focus-within .workspace-input textarea { min-height:230px; }
+  .workspace-bottom { padding:8px 5px 3px 9px; }
+  .proof-workspace .analyze-button { padding:10px 16px; }
+  .workspace-examples { display:none; }
+}
