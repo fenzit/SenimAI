@@ -188,7 +188,7 @@ nav { gap:42px; margin-right:auto; margin-left:auto; }nav a { color:#5b5953; fon
 
 /* Keep the actual verifier above the fold. It expands only after the user starts writing. */
 @media (min-width:901px) {
-  .hero.hero-focused { min-height:calc(100svh - 126px); padding:42px 30px 18px; }
+  .hero.hero-focused { width:100vw; min-height:calc(100svh - 126px); margin-left:calc(50% - 50vw); margin-right:calc(50% - 50vw); padding:42px max(30px,calc((100vw - 1180px) / 2)) 18px; }
   .hero-focused h1 { max-width:760px; font-size:clamp(46px,4.6vw,64px); }
   .hero-focused .hero-lede { margin-top:14px; }
   .hero-actions { margin-top:19px; }
