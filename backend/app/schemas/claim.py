@@ -72,6 +72,10 @@ class Claim(BaseModel):
     )
     start_char: Optional[int] = Field(default=None, description="Start offset in original text")
     end_char: Optional[int] = Field(default=None, description="End offset in original text")
+    causal_role: Optional[str] = Field(
+        default="STANDALONE",
+        description="'PREMISE' | 'DEDUCTION' | 'STANDALONE'",
+    )
 
 
 class ClaimResult(BaseModel):
@@ -96,5 +100,9 @@ class ClaimResult(BaseModel):
     evidence_sufficiency: Optional[EvidenceSufficiency] = Field(
         default=EvidenceSufficiency.DIRECT,
         description="DIRECT (single source), COMBINED (multi-hop synthesis), INDIRECT, or INSUFFICIENT",
+    )
+    causal_role: Optional[str] = Field(
+        default="STANDALONE",
+        description="'PREMISE' | 'DEDUCTION' | 'STANDALONE'",
     )
 

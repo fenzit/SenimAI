@@ -39,6 +39,7 @@ JSON OUTPUT SCHEMA:
       "id": 1,
       "text": "Extracted atomic claim in original language",
       "type": "factual | numerical | temporal | comparative | opinion",
+      "causal_role": "PREMISE | DEDUCTION | STANDALONE",
       "original_quote": "Exact subclause from the text"
     }
   ]
@@ -50,7 +51,7 @@ class ClaimExtractor:
     def __init__(self, llm: LLMProvider):
         self.llm = llm
 
-    async def extract(self, text: str, max_claims: int = 8) -> List[Claim]:
+    async def extract(self, text: str, max_claims: int = 12) -> List[Claim]:
         if not text or not text.strip():
             return []
 
@@ -77,6 +78,10 @@ class ClaimExtractor:
                 except ValueError:
                     ctype = ClaimType.FACTUAL
 
+                causal_role = str(item.get("causal_role", "STANDALONE")).upper()
+                if causal_role not in ["PREMISE", "DEDUCTION", "STANDALONE"]:
+                    causal_role = "STANDALONE"
+
                 quote = item.get("original_quote", "").strip() or None
                 start_char, end_char = None, None
                 if quote and quote in text:
@@ -94,6 +99,7 @@ class ClaimExtractor:
                         original_quote=quote,
                         start_char=start_char,
                         end_char=end_char,
+                        causal_role=causal_role,
                     )
                 )
 

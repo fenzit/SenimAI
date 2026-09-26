@@ -20,18 +20,21 @@ VERIFIER_SYSTEM_PROMPT = """You are a rigorous, evidence-based factual verificat
 Your sole mission is to evaluate the provided CLAIM against the provided EXTERNAL EVIDENCE.
 
 CRITICAL INTEGRITY & MULTI-HOP REASONING RULES:
-1. DO NOT use your internal training knowledge to validate or refute the claim. Rely EXCLUSIVELY on the provided evidence excerpts.
-2. MULTI-HOP INFERENCE: When a claim involves cause-and-effect (e.g. "Modifying list elements inside a function does not affect the original list"), you MAY combine premises from multiple sources (e.g. Premise 1: "Lists are mutable sequences" + Premise 2: "Arguments are passed by object reference sharing" -> Logical Inference: in-place mutation of the shared list object alters the caller's list -> Verdict: CONTRADICTED, Sufficiency: COMBINED).
+1. DO NOT invent facts out of nowhere, but DO APPLY LOGICAL DEDUCTION on the provided evidence. If the evidence establishes the underlying mechanism, deduce the logical outcome.
+2. MULTI-HOP INFERENCE & CAUSAL REASONING:
+   - Mechanism & Concurrency: If evidence states "asyncio uses a single-threaded cooperative event loop where tasks must await I/O", deduce that CPU-bound tasks running in a single thread cannot execute in parallel and will block the loop. Verdict: CONTRADICTED, Sufficiency: COMBINED.
+   - Causal Sophisms / False Deductions: If evidence confirms Premise A ("HTTP is stateless") but also shows ("Servers maintain sessions and state via cookies/storage"), deduce that the inference "therefore server cannot store state" is logically false. Verdict: CONTRADICTED or PARTIALLY_SUPPORTED with explicit explanation of the invalid deduction.
+   - Identity vs Value / Caching: If evidence states CPython caches integers in range [-5, 256], deduce that comparing arbitrary integers outside this range with `is` (identity) is not guaranteed to be true, and `is` tests identity while `==` tests value equality. Verdict: CONTRADICTED or NUANCED.
 3. If a single source directly confirms or refutes the exact claim, mark evidence_sufficiency: 'DIRECT'.
-4. If the conclusion is derived from synthesizing multiple sources/premises, mark evidence_sufficiency: 'COMBINED'.
+4. If the conclusion is derived from synthesizing multiple sources/premises or applying logical deduction to established mechanisms, mark evidence_sufficiency: 'COMBINED'.
 5. If the evidence provides only indirect/circumstantial support, mark evidence_sufficiency: 'INDIRECT'.
-6. If the provided evidence lacks sufficient information to judge, return 'UNVERIFIED' with evidence_sufficiency: 'INSUFFICIENT'.
+6. Only return 'UNVERIFIED' with evidence_sufficiency: 'INSUFFICIENT' if the provided evidence has ZERO relevant information about the concepts/mechanisms in the claim.
 7. If the claim touches upon a subtle technical distinction or terminology dispute (e.g. Python argument passing being 'call by sharing / object reference' rather than pure 'by value' or 'by reference'), return 'NUANCED'.
 8. If reputable sources in the evidence directly contradict each other, return 'CONFLICTING'.
-9. If the evidence directly or through multi-hop refutes the claim, return 'CONTRADICTED'.
+9. If the evidence directly or through multi-hop deduction refutes the claim, return 'CONTRADICTED'.
 10. If the evidence confirms the claim, return 'SUPPORTED'.
-11. Provide a clear, objective explanation in the requested language ({language}) citing specific details from the evidence.
-12. Provide a 'why_verdict' breakdown explaining the step-by-step reasoning or logical chain.
+11. Provide a clear, objective explanation in the requested language ({language}) citing specific details and logical steps.
+12. Provide a 'why_verdict' breakdown explaining the step-by-step reasoning or logical chain (Premise 1 -> Premise 2 -> Deduction).
 13. For each source evaluated, classify its stance: 'SUPPORTS', 'CONTRADICTS', 'NEUTRAL', or 'INSUFFICIENT'.
 
 VERDICTS:
@@ -214,6 +217,7 @@ class ClaimVerifier:
                 start_char=claim.start_char,
                 end_char=claim.end_char,
                 evidence_sufficiency=evidence_sufficiency,
+                causal_role=claim.causal_role,
             )
 
         except Exception as e:
@@ -236,4 +240,5 @@ class ClaimVerifier:
                 start_char=claim.start_char,
                 end_char=claim.end_char,
                 evidence_sufficiency=EvidenceSufficiency.INSUFFICIENT,
+                causal_role=claim.causal_role,
             )
