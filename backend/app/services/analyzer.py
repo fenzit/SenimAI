@@ -129,6 +129,122 @@ class Analyzer:
         lower_text = text.lower()
         analysis_id = f"demo_{uuid.uuid4().hex[:8]}"
 
+        # Scenario: Adversarial Python Example (Call-by-sharing & Mutability)
+        if "кортеж" in lower_text or "передаются в функции" in lower_text or "списки передаются" in lower_text:
+            claims = [
+                ClaimResult(
+                    id=1,
+                    text="В Python списки передаются в функции по значению",
+                    type=ClaimType.FACTUAL,
+                    verdict=Verdict.NUANCED,
+                    confidence=0.92,
+                    explanation="В Python используется модель 'call by sharing' (передача объектной ссылки по значению). Терминология 'по значению' или 'по ссылке' не описывает поведение языка строго.",
+                    why_verdict="Официальная документация Python (Data Model & FAQ) указывает, что аргументы передаются через присваивание объектных ссылок, что делает классическое разделение на 'по значению/по ссылке' неточным.",
+                    original_quote="В Python списки передаются в функции по значению",
+                    start_char=text.find("В Python списки передаются в функции по значению") if "В Python списки передаются в функции по значению" in text else None,
+                    end_char=text.find("В Python списки передаются в функции по значению") + 48 if "В Python списки передаются в функции по значению" in text else None,
+                    sources=[
+                        Source(
+                            title="Python FAQ: How are arguments passed? — Python.org",
+                            url="https://docs.python.org/3/faq/programming.html#how-do-i-write-a-function-with-output-parameters",
+                            domain="docs.python.org",
+                            snippet="Remember that arguments are passed by assignment in Python. Since assignment just creates references to objects, mutable objects passed into a function can be modified in place.",
+                            quality=SourceTier.HIGH,
+                            stance=SourceStance.NEUTRAL,
+                        ),
+                    ],
+                ),
+                ClaimResult(
+                    id=2,
+                    text="Изменение элементов списка внутри функции никак не влияет на исходный список",
+                    type=ClaimType.FACTUAL,
+                    verdict=Verdict.CONTRADICTED,
+                    confidence=0.98,
+                    explanation="Списки в Python являются изменяемыми объектами (mutable). Изменение элементов списка внутри функции мутирует исходный объект.",
+                    why_verdict="Документация и технические стандарты подтверждают in-place мутацию изменяемых коллекций при вызове функций.",
+                    original_quote="изменение элементов списка внутри функции никак не влияет на исходный список",
+                    start_char=text.find("изменение элементов списка внутри функции никак не влияет на исходный список") if "изменение элементов списка внутри функции никак не влияет на исходный список" in text else None,
+                    end_char=text.find("изменение элементов списка внутри функции никак не влияет на исходный список") + 76 if "изменение элементов списка внутри функции никак не влияет на исходный список" in text else None,
+                    sources=[
+                        Source(
+                            title="Built-in Types: Mutable Sequence Types — docs.python.org",
+                            url="https://docs.python.org/3/library/stdtypes.html#mutable-sequence-types",
+                            domain="docs.python.org",
+                            snippet="Lists are mutable sequences. Operations like s[i] = x mutate the list in place.",
+                            quality=SourceTier.HIGH,
+                            stance=SourceStance.CONTRADICTS,
+                        )
+                    ],
+                ),
+                ClaimResult(
+                    id=3,
+                    text="Элементы кортежа можно изменять напрямую",
+                    type=ClaimType.FACTUAL,
+                    verdict=Verdict.CONTRADICTED,
+                    confidence=0.99,
+                    explanation="Кортежи (tuple) являются неизменяемыми последовательностями. Попытка изменить элемент по индексу вызывает TypeError.",
+                    why_verdict="Стандарт языка Python определяет tuple как неизменяемый тип данных.",
+                    original_quote="его элементы можно изменять напрямую",
+                    start_char=text.find("его элементы можно изменять напрямую") if "его элементы можно изменять напрямую" in text else None,
+                    end_char=text.find("его элементы можно изменять напрямую") + 36 if "его элементы можно изменять напрямую" in text else None,
+                    sources=[
+                        Source(
+                            title="Built-in Types: Tuples — docs.python.org",
+                            url="https://docs.python.org/3/library/stdtypes.html#tuples",
+                            domain="docs.python.org",
+                            snippet="Tuples are immutable sequences, typically used to store collections of heterogeneous data.",
+                            quality=SourceTier.HIGH,
+                            stance=SourceStance.CONTRADICTS,
+                        )
+                    ],
+                ),
+                ClaimResult(
+                    id=4,
+                    text="Кортежи являются изменяемыми объектами",
+                    type=ClaimType.FACTUAL,
+                    verdict=Verdict.CONTRADICTED,
+                    confidence=0.99,
+                    explanation="Кортежи в Python неизменяемы (immutable).",
+                    why_verdict="Документация Data Model: Tuples cannot be modified after creation.",
+                    original_quote="кортежи являются изменяемыми объектами",
+                    start_char=text.find("кортежи являются изменяемыми объектами") if "кортежи являются изменяемыми объектами" in text else None,
+                    end_char=text.find("кортежи являются изменяемыми объектами") + 38 if "кортежи являются изменяемыми объектами" in text else None,
+                    sources=[
+                        Source(
+                            title="The Python Language Reference: Data model",
+                            url="https://docs.python.org/3/reference/datamodel.html",
+                            domain="docs.python.org",
+                            snippet="An immutable sequence object cannot be altered once it is created.",
+                            quality=SourceTier.HIGH,
+                            stance=SourceStance.CONTRADICTS,
+                        )
+                    ],
+                ),
+                ClaimResult(
+                    id=5,
+                    text="Для защиты списка от изменений достаточно заменить его на кортеж",
+                    type=ClaimType.FACTUAL,
+                    verdict=Verdict.CONTRADICTED,
+                    confidence=0.91,
+                    explanation="Утверждение неверно в общем случае: если кортеж содержит внутри изменяемые объекты (например, списки), их содержимое всё ещё может быть изменено.",
+                    why_verdict="Неизменяемость кортежа относится только к ссылкам на его элементы. Вложенные мутабельные объекты внутри кортежа остаются изменяемыми.",
+                    original_quote="для защиты списка от изменений достаточно заменить его на кортеж",
+                    start_char=text.find("для защиты списка от изменений достаточно заменить его на кортеж") if "для защиты списка от изменений достаточно заменить его на кортеж" in text else None,
+                    end_char=text.find("для защиты списка от изменений достаточно заменить его на кортеж") + 64 if "для защиты списка от изменений достаточно заменить его на кортеж" in text else None,
+                    sources=[
+                        Source(
+                            title="Python Data Model: Immutability caveats",
+                            url="https://docs.python.org/3/reference/datamodel.html#objects-values-and-types",
+                            domain="docs.python.org",
+                            snippet="The value of an immutable container that contains a reference to a mutable object can change when the latter is modified; however, the container is still considered immutable.",
+                            quality=SourceTier.HIGH,
+                            stance=SourceStance.CONTRADICTS,
+                        )
+                    ],
+                ),
+            ]
+            return Aggregator.aggregate(claims=claims, original_text=text, analysis_id=analysis_id)
+
         # Scenario 2: Obvious Hallucination / Contradiction (Mars)
         if "марс" in lower_text or "mars" in lower_text:
             quote = "Первый человек высадился на Марсе в 1969 году"

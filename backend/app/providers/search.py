@@ -1,4 +1,7 @@
+import asyncio
+import html
 import logging
+import re
 import urllib.parse
 from abc import ABC, abstractmethod
 from typing import List, Optional
@@ -16,6 +19,7 @@ class SearchResult(BaseModel):
     domain: str
     snippet: str
     score: float = 0.0
+    published_date: Optional[str] = None
 
 
 def extract_domain(url: str) -> str:
@@ -30,44 +34,66 @@ def extract_domain(url: str) -> str:
 
 
 def classify_source_tier(domain: str) -> SourceTier:
+    """Classifies sources according to the 4-tier hierarchy:
+    - HIGH: Official documentation, RFCs, scientific standards, government/academic domains.
+    - MEDIUM: Reputable technical portals, major encyclopedias, peer Q&A.
+    - LOW: Generic blogs, community posts.
+    """
     domain_lower = domain.lower()
+    
+    # Tier 1: Primary Documentation, Standards, Academic & Gov
+    primary_official = [
+        "docs.python.org",
+        "python.org",
+        "developer.mozilla.org",
+        "w3.org",
+        "ietf.org",
+        "iso.org",
+        "ecma-international.org",
+        "who.int",
+        "nasa.gov",
+        "un.org",
+        "nature.com",
+        "science.org",
+        "arxiv.org",
+    ]
     if (
-        domain_lower.endswith(".gov")
+        any(po in domain_lower for po in primary_official)
+        or domain_lower.endswith(".gov")
         or domain_lower.endswith(".gov.kz")
         or domain_lower.endswith(".edu")
         or domain_lower.endswith(".edu.kz")
-        or "who.int" in domain_lower
-        or "nasa.gov" in domain_lower
-        or "un.org" in domain_lower
     ):
         return SourceTier.HIGH
 
+    # Tier 2: Reputable Technical Platforms, Major News & Encyclopedias
     reputable_domains = [
         "wikipedia.org",
         "britannica.com",
+        "stackoverflow.com",
+        "github.com",
+        "realpython.com",
+        "geeksforgeeks.org",
+        "habr.com",
         "reuters.com",
         "bbc.com",
         "bbc.co.uk",
-        "nature.com",
-        "science.org",
-        "python.org",
-        "github.com",
+        "bloomberg.com",
         "tengrinews.kz",
         "inform.kz",
         "forbes.com",
-        "bloomberg.com",
     ]
     if any(rep in domain_lower for rep in reputable_domains):
         return SourceTier.HIGH
 
     medium_indicators = [
-        "habr.com",
         "medium.com",
-        "stackoverflow.com",
+        "dev.to",
         "news",
         "journal",
         "times",
         "post",
+        "guide",
     ]
     if any(med in domain_lower for med in medium_indicators):
         return SourceTier.MEDIUM
@@ -115,6 +141,7 @@ class TavilySearchProvider(SearchProvider):
                         domain=extract_domain(item_url),
                         snippet=item.get("content", ""),
                         score=float(item.get("score", 0.0)),
+                        published_date=item.get("published_date"),
                     )
                 )
             return results
@@ -150,77 +177,113 @@ class SerperSearchProvider(SearchProvider):
                         url=item_url,
                         domain=extract_domain(item_url),
                         snippet=item.get("snippet", ""),
+                        published_date=item.get("date"),
                     )
                 )
             return results
 
 
-class DuckDuckGoSearchProvider(SearchProvider):
-    """DuckDuckGo Instant Answer / HTML Search Provider (free fallback)."""
+class WikipediaSearchProvider(SearchProvider):
+    """Authoritative open encyclopedia search (EN and RU) via official MediaWiki API."""
 
-    def __init__(self, timeout: int = 15):
+    def __init__(self, timeout: int = 10):
         self.timeout = timeout
 
-    async def search(self, query: str, limit: int = 5) -> List[SearchResult]:
-        # Using DuckDuckGo Instant Answers & Lite search
-        url = "https://html.duckduckgo.com/html/"
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) SenimAI-FactChecker/1.0"
-        }
-        data = {"q": query}
+    async def search(self, query: str, limit: int = 4) -> List[SearchResult]:
         results: List[SearchResult] = []
+        clean_q = re.sub(r'["\';:]', " ", query).strip()
+        
+        # Search both English and Russian Wikipedia
+        endpoints = [
+            ("ru", "https://ru.wikipedia.org/w/api.php"),
+            ("en", "https://en.wikipedia.org/w/api.php"),
+        ]
 
+        async with httpx.AsyncClient(
+            timeout=self.timeout,
+            headers={"User-Agent": "SenimAI-FactChecker/1.0 (info@senimai.kz)"},
+        ) as client:
+            for lang, endpoint in endpoints:
+                try:
+                    params = {
+                        "action": "query",
+                        "list": "search",
+                        "srsearch": clean_q,
+                        "format": "json",
+                        "srlimit": limit,
+                    }
+                    resp = await client.get(endpoint, params=params)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        search_items = data.get("query", {}).get("search", [])
+                        for item in search_items:
+                            title = item.get("title", "")
+                            raw_snip = item.get("snippet", "")
+                            clean_snip = html.unescape(re.sub(r"<[^>]+>", " ", raw_snip)).strip()
+                            page_url = f"https://{lang}.wikipedia.org/wiki/{urllib.parse.quote(title.replace(' ', '_'))}"
+                            results.append(
+                                SearchResult(
+                                    title=f"{title} — Wikipedia ({lang.upper()})",
+                                    url=page_url,
+                                    domain="wikipedia.org",
+                                    snippet=clean_snip,
+                                    score=0.9,
+                                )
+                            )
+                except Exception as e:
+                    logger.debug(f"Wikipedia search failed for lang {lang}: {e}")
+
+        return results[:limit]
+
+
+class DuckDuckGoInstantProvider(SearchProvider):
+    """DuckDuckGo Official Instant Answers API provider."""
+
+    def __init__(self, timeout: int = 10):
+        self.timeout = timeout
+
+    async def search(self, query: str, limit: int = 3) -> List[SearchResult]:
+        results: List[SearchResult] = []
         try:
-            async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as client:
-                resp = await client.post(url, data=data, headers=headers)
+            url = "https://api.duckduckgo.com/"
+            params = {
+                "q": query,
+                "format": "json",
+                "no_redirect": "1",
+                "no_html": "1",
+                "skip_disambig": "0",
+            }
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                resp = await client.get(url, params=params)
                 if resp.status_code == 200:
-                    import re
-
-                    # Simple regex parser for DuckDuckGo lite results without heavy bs4
-                    # Pattern for result snippets and links
-                    link_matches = re.findall(
-                        r'<a class="result__url" href="([^"]+)">([^<]+)</a>', resp.text
-                    )
-                    snippet_matches = re.findall(
-                        r'<a class="result__snippet[^"]*"[^>]*>(.*?)</a>', resp.text, re.DOTALL
-                    )
-
-                    for idx, (href, raw_domain) in enumerate(link_matches[:limit]):
-                        # clean up uddg redirect if present
-                        actual_url = href
-                        if "uddg=" in href:
-                            parsed_target = urllib.parse.parse_qs(urllib.parse.urlparse(href).query)
-                            if "uddg" in parsed_target:
-                                actual_url = parsed_target["uddg"][0]
-
-                        snippet = ""
-                        if idx < len(snippet_matches):
-                            clean_snippet = re.sub(r"<[^>]+>", "", snippet_matches[idx]).strip()
-                            snippet = clean_snippet
-
-                        domain = extract_domain(actual_url)
+                    data = resp.json()
+                    abstract = data.get("AbstractText", "")
+                    abstract_url = data.get("AbstractURL", "")
+                    if abstract and abstract_url:
                         results.append(
                             SearchResult(
-                                title=f"Result from {domain}",
-                                url=actual_url,
-                                domain=domain,
-                                snippet=snippet or f"Information regarding: {query}",
+                                title=data.get("Heading", "DuckDuckGo Instant Answer"),
+                                url=abstract_url,
+                                domain=extract_domain(abstract_url),
+                                snippet=abstract,
+                                score=0.85,
                             )
                         )
+                    for topic in data.get("RelatedTopics", [])[:limit]:
+                        t_text = topic.get("Text", "")
+                        t_url = topic.get("FirstURL", "")
+                        if t_text and t_url:
+                            results.append(
+                                SearchResult(
+                                    title=t_text[:50] + "...",
+                                    url=t_url,
+                                    domain=extract_domain(t_url),
+                                    snippet=t_text,
+                                    score=0.8,
+                                )
+                            )
         except Exception as e:
-            logger.warning(f"DuckDuckGo search failed: {e}")
-
-        if not results:
-            # Return realistic query-tailored fallback
-            results.append(
-                SearchResult(
-                    title=f"General Web Information on '{query}'",
-                    url="https://en.wikipedia.org/wiki/Special:Search?search=" + urllib.parse.quote(query),
-                    domain="wikipedia.org",
-                    snippet=f"Information and verified references regarding {query}.",
-                )
-            )
-
+            logger.debug(f"DDG Instant search failed: {e}")
         return results[:limit]
 
 
@@ -259,19 +322,19 @@ class MockSearchProvider(SearchProvider):
                     snippet="The Eiffel Tower is a wrought-iron tower on the Champ de Mars in Paris, France. It was designed by Gustave Eiffel and built from 1887 to 1889.",
                 ),
             ]
-        elif "python" in q or "россум" in q:
+        elif "python" in q or "россум" in q or "tuple" in q or "кортеж" in q:
             return [
                 SearchResult(
-                    title="Python Executive Summary - Python.org",
-                    url="https://www.python.org/doc/essays/blurb/",
-                    domain="python.org",
-                    snippet="Python was conceived in the late 1980s by Guido van Rossum at CWI in the Netherlands and released in 1991.",
+                    title="Python Data Model — Official Python Documentation",
+                    url="https://docs.python.org/3/reference/datamodel.html",
+                    domain="docs.python.org",
+                    snippet="Tuples are immutable sequences in Python. An immutable sequence cannot be altered after creation. Lists are mutable sequences.",
                 ),
                 SearchResult(
-                    title="History of Python - Wikipedia",
-                    url="https://en.wikipedia.org/wiki/History_of_Python",
-                    domain="wikipedia.org",
-                    snippet="Python was created by Guido van Rossum and first released in 1991. The language emphasizes code readability.",
+                    title="Python FAQ: How are arguments passed in Python?",
+                    url="https://docs.python.org/3/faq/programming.html#how-do-i-write-a-function-with-output-parameters",
+                    domain="docs.python.org",
+                    snippet="Remember that arguments are passed by assignment in Python. Since assignment just creates references to objects, there's no alias between an argument name and caller object, but mutable objects can be modified in place.",
                 ),
             ]
         else:
@@ -291,16 +354,64 @@ class MockSearchProvider(SearchProvider):
             ]
 
 
+class HybridSearchProvider(SearchProvider):
+    """Intelligent fallback search provider that combines configured providers with Wikipedia and official docs."""
+
+    def __init__(self, primary: SearchProvider):
+        self.primary = primary
+        self.wiki_provider = WikipediaSearchProvider()
+        self.ddg_instant = DuckDuckGoInstantProvider()
+
+    async def search(self, query: str, limit: int = 5) -> List[SearchResult]:
+        results: List[SearchResult] = []
+        
+        # 1. Try primary search provider (Tavily, Serper, etc.)
+        try:
+            primary_results = await self.primary.search(query=query, limit=limit)
+            if primary_results:
+                results.extend(primary_results)
+        except Exception as e:
+            logger.warning(f"Primary search failed: {e}. Falling back to Wikipedia and Instant Docs.")
+
+        # 2. If fewer than 2 results found, augment with Wikipedia and DDG Instant
+        if len(results) < 2:
+            try:
+                wiki_results = await self.wiki_provider.search(query=query, limit=limit)
+                results.extend(wiki_results)
+            except Exception as e:
+                logger.debug(f"Wikipedia fallback failed: {e}")
+
+            try:
+                ddg_results = await self.ddg_instant.search(query=query, limit=2)
+                results.extend(ddg_results)
+            except Exception as e:
+                logger.debug(f"DDG fallback failed: {e}")
+
+        # Deduplicate results by URL domain and title
+        seen_urls = set()
+        deduped: List[SearchResult] = []
+        for r in results:
+            if r.url not in seen_urls and len(r.snippet.strip()) > 15:
+                seen_urls.add(r.url)
+                deduped.append(r)
+
+        # Sort by tier priority (High tier official/wiki sources first)
+        deduped.sort(key=lambda s: 0 if classify_source_tier(s.domain) == SourceTier.HIGH else 1)
+        return deduped[:limit]
+
+
 def get_search_provider() -> SearchProvider:
     if settings.MOCK_MODE:
         return MockSearchProvider()
+    
     if settings.SEARCH_PROVIDER == "tavily" and settings.TAVILY_API_KEY:
-        return TavilySearchProvider()
-    if settings.SEARCH_PROVIDER == "serper" and settings.SERPER_API_KEY:
-        return SerperSearchProvider()
-    if settings.SEARCH_PROVIDER == "duckduckgo":
-        return DuckDuckGoSearchProvider()
+        primary = TavilySearchProvider()
+    elif settings.SEARCH_PROVIDER == "serper" and settings.SERPER_API_KEY:
+        primary = SerperSearchProvider()
+    elif settings.SEARCH_PROVIDER == "wikipedia":
+        primary = WikipediaSearchProvider()
+    else:
+        # Default robust fallback
+        primary = WikipediaSearchProvider()
 
-    # If Tavily or Serper keys are not set, use DuckDuckGo provider with fallback
-    logger.info("Search API key not provided; using DuckDuckGo search provider.")
-    return DuckDuckGoSearchProvider()
+    return HybridSearchProvider(primary)

@@ -28,9 +28,17 @@ class Summary(BaseModel):
     supported: int = Field(0, description="Claims supported by external evidence")
     contradicted: int = Field(0, description="Claims contradicted by external evidence")
     partially_supported: int = Field(0, description="Claims with mixed/partial support")
+    nuanced: int = Field(0, description="Claims with subtle nuances or terminology context")
     unverified: int = Field(0, description="Claims without sufficient external evidence")
     not_fact_checkable: int = Field(0, description="Subjective opinions or non-verifiable statements")
     conflicting: int = Field(0, description="Claims where reliable sources contradict each other")
+    verified_claims_count: int = Field(
+        0, description="Number of claims with sufficient evidence to evaluate"
+    )
+    evidence_status: str = Field(
+        default="SUFFICIENT",
+        description="'SUFFICIENT' | 'PARTIAL' | 'INSUFFICIENT'",
+    )
     verification_score: float = Field(
         ...,
         ge=0.0,
@@ -45,7 +53,7 @@ class Summary(BaseModel):
     )
     overall_verdict: Optional[str] = Field(
         default="VERIFIED",
-        description="Aggregate overall status: 'TRUE' | 'FALSE' | 'MIXED' | 'UNVERIFIED' | 'OPINION'",
+        description="Aggregate overall status: 'TRUE' | 'FALSE' | 'MIXED' | 'NUANCED' | 'INSUFFICIENT_EVIDENCE' | 'OPINION'",
     )
 
 

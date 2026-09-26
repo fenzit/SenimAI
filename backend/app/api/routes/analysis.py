@@ -92,7 +92,8 @@ async def export_markdown(analysis: AnalyzeResponse) -> Dict[str, str]:
         "SUPPORTED": "🟢 SUPPORTED",
         "CONTRADICTED": "🔴 CONTRADICTED",
         "PARTIALLY_SUPPORTED": "🟡 PARTIALLY SUPPORTED",
-        "UNVERIFIED": "⚪ UNVERIFIED",
+        "NUANCED": "⚠️ NUANCED",
+        "UNVERIFIED": "⚪ UNVERIFIED (Insufficient Evidence)",
         "NOT_FACT_CHECKABLE": "🟣 NOT FACT-CHECKABLE",
         "CONFLICTING": "🟠 CONFLICTING",
     }
@@ -101,13 +102,15 @@ async def export_markdown(analysis: AnalyzeResponse) -> Dict[str, str]:
     overall_verdict_badge = analysis.summary.overall_verdict or "MIXED"
     lines = [
         f"# 🛡️ AI Trust Verification Report — ID: `{analysis.analysis_id}`",
-        f"**Verdict:** `{overall_verdict_badge}` | **Trust Score:** `{score_pct}%` | **Total Claims:** `{analysis.summary.total_claims}`",
+        f"**Verdict:** `{overall_verdict_badge}` | **Trust Score:** `{score_pct}%` | **Verified Claims:** `{analysis.summary.verified_claims_count}/{analysis.summary.total_claims}`",
+        f"**Evidence Status:** `{analysis.summary.evidence_status}` | **Confidence:** `{int(analysis.summary.average_confidence * 100)}%`",
         "",
         "### 📊 Summary Breakdown",
         f"- 🟢 **Supported:** {analysis.summary.supported}",
         f"- 🔴 **Contradicted:** {analysis.summary.contradicted}",
         f"- 🟡 **Partially Supported:** {analysis.summary.partially_supported}",
-        f"- ⚪ **Unverified:** {analysis.summary.unverified}",
+        f"- ⚠️ **Nuanced / Ambiguous:** {analysis.summary.nuanced}",
+        f"- ⚪ **Unverified (No Evidence):** {analysis.summary.unverified}",
         f"- 🟣 **Opinions:** {analysis.summary.not_fact_checkable}",
         f"- 🟠 **Conflicting:** {analysis.summary.conflicting}",
         "",
