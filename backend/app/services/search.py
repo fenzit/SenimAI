@@ -146,8 +146,13 @@ class SearchService:
         queries = []
         primary_entity = ""
 
-        if "python" in lower_context or "python" in lower_claim:
+        if "python" in lower_context or "python" in lower_claim or "asyncio" in lower_claim or "cpython" in lower_claim:
             primary_entity = "Python"
+            if "asyncio" in lower_claim:
+                queries.append("Python asyncio cooperative event loop single thread CPU bound")
+                queries.append("Python asyncio non-blocking I/O vs CPU parallelism")
+            if "256" in lower_claim or "целые числа" in lower_claim or "кэш" in lower_claim:
+                queries.append("CPython small integer caching -5 to 256 is operator identity")
             if "кортеж" in lower_claim or "tuple" in lower_claim:
                 queries.append("Python tuple immutable data model")
                 queries.append("Python tuple item assignment TypeError")
@@ -158,6 +163,14 @@ class SearchService:
                 queries.append("Python arguments passed by assignment sharing reference")
             if not queries:
                 queries.append(f"Python {cleaned}")
+        elif "postgres" in lower_context or "postgres" in lower_claim or "b-tree" in lower_claim or "like" in lower_claim:
+            primary_entity = "PostgreSQL"
+            queries.append("PostgreSQL B-tree index operator LIKE leading wildcard prefix")
+            queries.append("PostgreSQL B-tree pattern matching LIKE '%pattern'")
+        elif "http" in lower_context or "http" in lower_claim or "stateless" in lower_claim:
+            primary_entity = "HTTP"
+            queries.append("HTTP stateless protocol server session storage cookies")
+            queries.append("HTTP stateless vs server state persistence")
         else:
             queries.append(cleaned)
 

@@ -16,9 +16,9 @@ class AnalyzeRequest(BaseModel):
         description="Preferred language for explanations ('ru', 'en', 'kz')",
     )
     max_claims: int = Field(
-        default=8,
+        default=12,
         ge=1,
-        le=15,
+        le=20,
         description="Maximum number of atomic claims to extract and verify",
     )
 

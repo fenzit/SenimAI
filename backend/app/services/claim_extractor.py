@@ -10,7 +10,14 @@ CLAIM_EXTRACTION_SYSTEM_PROMPT = """You are a precise factual claim extraction s
 Your task is to analyze the input text and extract independent, atomic factual claims.
 
 RULES:
-1. Split compound statements into separate, atomic claims (e.g. "Python was made by Guido in 1991 in London" -> 1. "Python was made by Guido", 2. "Python was released in 1991", 3. "Python was created in London").
+1. Split compound and causal statements into separate atomic claims:
+   - When a sentence connects a premise and an inference/consequence (e.g., using 'therefore', 'because', 'поэтому', 'поскольку', 'так как', 'вследствие'), ALWAYS extract BOTH the premise and the deduction as separate claims!
+   - Example: "HTTP is stateless, therefore the server cannot store client state between requests" ->
+     Claim 1: "HTTP is a stateless protocol"
+     Claim 2: "An HTTP server cannot store information about previous client requests between requests"
+   - Example: "asyncio executes CPU-bound tasks in parallel because await switches tasks without blocking" ->
+     Claim 1: "asyncio allows executing multiple CPU-bound tasks in parallel in a single thread"
+     Claim 2: "await switches execution between tasks without blocking the thread in asyncio"
 2. Keep each claim independently verifiable.
 3. Preserve the original language of the text.
 4. Do NOT invent information or change original meaning.

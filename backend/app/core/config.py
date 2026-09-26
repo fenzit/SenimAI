@@ -44,7 +44,7 @@ class Settings(BaseSettings):
     SERPER_API_KEY: Optional[str] = None
 
     # Pipeline Concurrency & Limits
-    MAX_CLAIMS: int = 8
+    MAX_CLAIMS: int = 12
     MAX_CONCURRENT_CLAIMS: int = 4
     SEARCH_RESULTS_PER_CLAIM: int = 4
     REQUEST_TIMEOUT_SECONDS: int = 30
