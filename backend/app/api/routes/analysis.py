@@ -112,9 +112,9 @@ async def export_markdown(analysis: AnalyzeResponse) -> Dict[str, str]:
 
     lines = [
         f"# 🛡️ AI Trust Verification Report — ID: `{analysis.analysis_id}`",
-        f"**Verdict:** `{overall_verdict_badge}` | **Trust Score:** `{score_pct}%` | **Verified Claims:** `{analysis.summary.verified_claims_count}/{analysis.summary.total_claims}`",
-        f"**Summary:** `{summary_line}`",
-        f"**Evidence Status:** `{analysis.summary.evidence_status}` | **Evidence Confidence:** `{confidence_label}` ({int(analysis.summary.average_confidence * 100)}%)",
+        f"## 📋 Result: `{summary_line}`",
+        f"**Verdict:** `{overall_verdict_badge}` | **Verified Coverage:** `{analysis.summary.verified_claims_count}/{analysis.summary.total_claims} claims` | **Evidence Status:** `{analysis.summary.evidence_status}`",
+        f"**Evidence Confidence:** `{confidence_label}` ({int(analysis.summary.average_confidence * 100)}%) | **Accuracy of Verified Claims:** `{score_pct}%`",
         "",
         "### 📊 Summary Breakdown",
         f"- 🟢 **Supported (Confirmed):** {analysis.summary.supported}",

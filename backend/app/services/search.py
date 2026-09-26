@@ -11,32 +11,32 @@ from app.services.evidence import EvidenceProcessor
 logger = logging.getLogger("senimai.search_service")
 
 QUERY_GENERATOR_SYSTEM_PROMPT = """You are a high-precision search query formulation & claim decomposition engine for an AI fact-checking system.
-Your mission is to analyze an atomic claim along with its parent context and generate 2-4 targeted, disambiguated search queries that retrieve the core sub-premises.
+Your mission is to analyze an atomic claim along with its parent context and generate 2-4 targeted, disambiguated search queries that retrieve official documentation and authoritative primary sources.
 
-CRITICAL DECOMPOSITION RULES:
-1. DECOMPOSE COMPOUND MECHANICS (Multi-Hop):
+CRITICAL DECOMPOSITION & TARGETING RULES:
+1. TARGET OFFICIAL DOCUMENTATION FIRST:
+   - For PostgreSQL: generate queries targeting `site:postgresql.org/docs` or `postgresql.org docs` (e.g. "site:postgresql.org/docs B-tree index LIKE pattern matching wildcard").
+   - For Python & CPython: generate queries targeting `site:docs.python.org` (e.g. "site:docs.python.org asyncio cooperative event loop single thread CPU bound", "site:docs.python.org CPython integer caching small integers", "site:docs.python.org is operator identity vs equality").
+   - For Web/HTTP: generate queries targeting `site:ietf.org` or `developer.mozilla.org` (e.g. "site:ietf.org RFC HTTP stateless protocol session state").
+2. DECOMPOSE COMPOUND MECHANICS (Multi-Hop):
    - If a claim asserts a cause-and-effect or programming behavior (e.g. "Modifying list elements inside a function does not affect the original list"), decompose into atomic search queries:
-     * Query 1: "Python list mutable sequence"
-     * Query 2: "Python function argument pass by object reference sharing modification"
-   - If a claim asserts protection via tuple (e.g. "Replacing list with tuple is sufficient to protect from changes"):
-     * Query 1: "Python tuple immutable"
-     * Query 2: "Python tuple contains mutable object list change"
-2. DISAMBIGUATE ENTITY: ALWAYS include the specific subject (e.g. "Python", "JavaScript", "Apollo 11") in every query to prevent matching unrelated articles (e.g. BitTorrent, Iterator, Printf, Politics).
-3. TARGET OFFICIAL DOCS & ENGLISH TERMINOLOGY: For technical and coding claims, prioritize English technical search phrases (docs.python.org, Wikipedia, Data Model).
-4. PRESERVE SHORT KEYWORDS: Avoid long complex sentences. Use search engine-friendly keyword queries.
+     * Query 1: "site:docs.python.org list mutable sequence"
+     * Query 2: "site:docs.python.org function argument passing object reference sharing"
+3. DISAMBIGUATE ENTITY: ALWAYS include the specific subject (e.g. "Python", "PostgreSQL", "JavaScript") in every query.
+4. PRESERVE SHORT KEYWORDS: Avoid long complex conversational sentences. Use search engine-friendly keyword queries.
 
 JSON OUTPUT FORMAT:
 {
-  "primary_entity": "Python",
-  "domain": "programming | science | history | medicine | general",
+  "primary_entity": "PostgreSQL",
+  "domain": "programming | database | science | history | general",
   "sub_premises": [
-    "Python lists are mutable in-place",
-    "Python passes objects to functions by sharing reference"
+    "PostgreSQL B-tree indexes support LIKE with leading constant",
+    "PostgreSQL B-tree indexes cannot accelerate LIKE '%pattern' with leading wildcard"
   ],
   "queries": [
-    "Python list mutable in place",
-    "Python function argument pass by sharing reference",
-    "Python docs data model mutable sequence"
+    "site:postgresql.org/docs B-tree index LIKE pattern matching",
+    "PostgreSQL docs indexes types B-tree LIKE wildcard prefix",
+    "site:postgresql.org/docs indexes-types.html"
   ]
 }
 """
@@ -149,28 +149,31 @@ class SearchService:
         if "python" in lower_context or "python" in lower_claim or "asyncio" in lower_claim or "cpython" in lower_claim:
             primary_entity = "Python"
             if "asyncio" in lower_claim:
-                queries.append("Python asyncio cooperative event loop single thread CPU bound")
-                queries.append("Python asyncio non-blocking I/O vs CPU parallelism")
+                queries.append("site:docs.python.org asyncio cooperative event loop single thread CPU bound blocking")
+                queries.append("Python asyncio non-blocking event loop CPU bound concurrency")
             if "256" in lower_claim or "целые числа" in lower_claim or "кэш" in lower_claim:
-                queries.append("CPython small integer caching -5 to 256 is operator identity")
+                queries.append("site:docs.python.org CPython small integer caching -5 to 256 identity")
+                queries.append("CPython small integer caching implementation detail language specification")
             if "кортеж" in lower_claim or "tuple" in lower_claim:
-                queries.append("Python tuple immutable data model")
-                queries.append("Python tuple item assignment TypeError")
+                queries.append("site:docs.python.org tuple immutable sequence data model")
+                queries.append("Python tuple immutable object reference")
             if "список" in lower_claim or "списк" in lower_claim or "list" in lower_claim:
-                queries.append("Python list mutable in place")
-                queries.append("Python function argument passing mutable list")
+                queries.append("site:docs.python.org list mutable sequence in place")
+                queries.append("Python function argument passing mutable list reference")
             if "переда" in lower_claim or "значени" in lower_claim or "ссылк" in lower_claim:
-                queries.append("Python arguments passed by assignment sharing reference")
+                queries.append("site:docs.python.org FAQ argument passing assignment object sharing")
+            if "is" in lower_claim or "равенств" in lower_claim or "сравнен" in lower_claim:
+                queries.append("site:docs.python.org/3/reference/expressions.html is operator identity vs equality")
             if not queries:
-                queries.append(f"Python {cleaned}")
+                queries.append(f"site:docs.python.org {cleaned}")
         elif "postgres" in lower_context or "postgres" in lower_claim or "b-tree" in lower_claim or "like" in lower_claim:
             primary_entity = "PostgreSQL"
-            queries.append("PostgreSQL B-tree index operator LIKE leading wildcard prefix")
-            queries.append("PostgreSQL B-tree pattern matching LIKE '%pattern'")
+            queries.append("site:postgresql.org/docs B-tree index operator LIKE leading wildcard %")
+            queries.append("PostgreSQL documentation B-tree pattern matching LIKE '%pattern' anchor")
         elif "http" in lower_context or "http" in lower_claim or "stateless" in lower_claim:
             primary_entity = "HTTP"
-            queries.append("HTTP stateless protocol server session storage cookies")
-            queries.append("HTTP stateless vs server state persistence")
+            queries.append("site:ietf.org RFC HTTP stateless protocol session state cookies")
+            queries.append("developer.mozilla.org HTTP stateless session state")
         else:
             queries.append(cleaned)
 

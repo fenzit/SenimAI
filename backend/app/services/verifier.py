@@ -40,7 +40,11 @@ CRITICAL INTEGRITY & MULTI-HOP REASONING RULES:
 11. If the evidence confirms the claim, return 'SUPPORTED'.
 12. Provide a clear, objective explanation in the requested language ({language}) citing specific details and logical steps.
 13. Provide a 'why_verdict' breakdown explaining the step-by-step reasoning or logical chain (Premise 1 -> Premise 2 -> Deduction).
-14. For each source evaluated, classify:
+14. TOPIC RELEVANCE VS EVIDENCE RELEVANCE:
+    - Topic Relevance is NOT Evidence Relevance. For example, a general Wikipedia page about "PostgreSQL" is related to the topic of PostgreSQL, but if its excerpt does NOT mention the B-tree index LIKE pattern matching behavior, it is 'INSUFFICIENT' evidence.
+    - For such sources, classify stance: 'INSUFFICIENT', relevance: 'RELATED', and relevance_reason: 'Источник относится к общей теме, но не содержит конкретной технической информации для проверки этого утверждения.'
+    - If a source contains the exact technical rule from official documentation (e.g. docs.python.org, postgresql.org), classify stance: 'SUPPORTS' or 'CONTRADICTS', relevance: 'DIRECT', relevance_reason: 'Официальная документация содержит прямое описание данного правила/поведения.'
+15. For each source evaluated, classify:
     - stance: 'SUPPORTS' | 'CONTRADICTS' | 'NEUTRAL' | 'INSUFFICIENT'
     - relevance: 'DIRECT' | 'RELATED' | 'NOT_RELEVANT'
     - relevance_reason: 'Brief 1-sentence explanation why this source is direct, related, or irrelevant'
