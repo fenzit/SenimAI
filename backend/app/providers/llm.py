@@ -67,11 +67,11 @@ class OpenAILLMProvider(LLMProvider):
 
 class GeminiLLMProvider(LLMProvider):
     FALLBACK_MODELS = [
-        "gemini-2.5-flash",
-        "gemini-2.5-flash-lite",
         "gemini-3.5-flash-lite",
+        "gemini-flash-latest",
         "gemini-3.5-flash",
-        "gemini-2.5-pro",
+        "gemini-3.7-flash",
+        "gemini-pro-latest",
     ]
 
     def __init__(
@@ -81,7 +81,7 @@ class GeminiLLMProvider(LLMProvider):
         timeout: int = 40,
     ):
         self.api_key = api_key or settings.GEMINI_API_KEY
-        raw_model = model or settings.GEMINI_MODEL or "gemini-2.5-flash"
+        raw_model = model or settings.GEMINI_MODEL or "gemini-3.5-flash-lite"
         if raw_model.startswith("models/"):
             raw_model = raw_model[7:]
         self.model = raw_model
@@ -117,18 +117,18 @@ class GeminiLLMProvider(LLMProvider):
                     },
                 }
 
-                # Retry up to 3 times for transient 429 or 503 errors with backoff
-                for attempt in range(3):
+                # Retry up to 4 times for transient 429 or 503 errors with backoff
+                for attempt in range(4):
                     try:
                         response = await client.post(url, json=payload)
                         if response.status_code == 404:
                             logger.warning(f"Model {model_name} not found (404). Trying next fallback...")
-                            last_error = response.text
+                            last_error = f"Model {model_name} not found (404)"
                             break
 
                         if response.status_code in (429, 503):
-                            delay = (attempt + 1) * 2.0
-                            logger.warning(f"Gemini {model_name} rate limit (429/503). Retrying in {delay}s (attempt {attempt+1}/3)...")
+                            delay = (attempt + 1) * 2.5
+                            logger.warning(f"Gemini {model_name} rate limit / busy ({response.status_code}). Retrying in {delay}s (attempt {attempt+1}/4)...")
                             await asyncio.sleep(delay)
                             continue
 
@@ -148,19 +148,19 @@ class GeminiLLMProvider(LLMProvider):
                         return json.loads(text_content)
 
                     except Exception as e:
-                        last_error = e
+                        last_error = str(e)
                         if "429" in str(e) or "503" in str(e):
-                            delay = (attempt + 1) * 2.0
+                            delay = (attempt + 1) * 2.5
                             logger.warning(f"Gemini {model_name} error {e}. Backoff {delay}s...")
                             await asyncio.sleep(delay)
                             continue
                         if "404" in str(e):
                             break
-                        # If not rate limit or 404, log and break to next model
                         logger.warning(f"Gemini {model_name} attempt {attempt+1} failed: {e}")
                         break
 
         raise ValueError(f"Gemini API request failed across models: {last_error}")
+
 
 
 class MockLLMProvider(LLMProvider):

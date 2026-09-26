@@ -247,7 +247,7 @@ class ClaimVerifier:
 
         except Exception as e:
             logger.error(f"Error during verification for claim #{claim.id}: {e}")
-            is_rate_limit = "429" in str(e) or "quota" in str(e).lower()
+            err_msg = " ".join(str(e).replace("\n", " ").split())[:90]
             return ClaimResult(
                 id=claim.id,
                 text=claim.text,
@@ -255,12 +255,12 @@ class ClaimVerifier:
                 verdict=Verdict.VERIFICATION_ERROR,
                 confidence=0.0,
                 explanation=(
-                    ("⚠️ Верификация прервана: внешний сервис верификации временно перегружен (Rate Limit 429). Доказательства найдены, но финальный шаг анализа не завершён." if is_rate_limit else f"⚠️ Верификация прервана: сбой внешнего сервиса ({str(e)[:100]}). Доказательства найдены, но логический шаг не завершён.")
+                    ("⚠️ Верификация прервана: внешний сервис верификации временно перегружен (Rate Limit 429). Доказательства найдены, но финальный шаг анализа не завершён." if is_rate_limit else f"⚠️ Верификация прервана: сбой внешнего сервиса ({err_msg}). Доказательства найдены, но логический шаг не завершён.")
                     if language == "ru"
-                    else ("⚠️ Verification interrupted: external LLM rate limited. Evidence found, but reasoning incomplete." if is_rate_limit else f"⚠️ Verification interrupted: service error ({str(e)[:100]}).")
+                    else ("⚠️ Verification interrupted: external LLM rate limited. Evidence found, but reasoning incomplete." if is_rate_limit else f"⚠️ Verification interrupted: service error ({err_msg}).")
                 ),
                 why_verdict=(
-                    "Внешний сервис верификации временно перегружен (Rate Limit 429)." if is_rate_limit else f"Ошибка верификатора: {str(e)[:100]}"
+                    "Внешний сервис верификации временно перегружен (Rate Limit 429)." if is_rate_limit else f"Ошибка верификатора: {err_msg}"
                 ),
                 sources=sources,
                 supporting_evidence=[],
