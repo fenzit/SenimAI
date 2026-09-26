@@ -15,14 +15,14 @@ const DEMO_ANALYSIS = {
   summary: { total_claims: 4, supported: 1, contradicted: 2, partially_supported: 1, unverified: 0, not_fact_checkable: 0, conflicting: 0, verification_score: 0.38 },
   claims: [
     {
-      id: 1, type: 'temporal', verdict: 'supported', confidence: 0.98,
+      id: 1, type: 'temporal', verdict: 'supported', confidence: 0.98, evidence_sufficiency: 'DIRECT',
       text: 'Эйфелева башня была построена в 1889 году.', ...coordinates('Эйфелева башня была построена в 1889 году'),
       explanation: 'Официальный сайт башни указывает, что она была открыта 31 марта 1889 года для Всемирной выставки в Париже.',
       why_verdict: ['Утверждение выделено как самостоятельный исторический факт.', 'Первичный источник прямо называет 1889 год и дату открытия.', 'Найденное доказательство не противоречит ни одной части claim.'],
       sources: [{ title: 'The Eiffel Tower: history and key dates', domain: 'toureiffel.paris', url: 'https://www.toureiffel.paris/en/the-monument/history', snippet: 'The Eiffel Tower was inaugurated on 31 March 1889 for the Universal Exhibition.', quality: 'Primary source', freshness: 'Official reference', stance: 'SUPPORTS' }],
     },
     {
-      id: 2, type: 'factual', verdict: 'contradicted', confidence: 0.99,
+      id: 2, type: 'factual', verdict: 'contradicted', confidence: 0.99, evidence_sufficiency: 'DIRECT',
       text: 'Эйфелева башня находится в Лондоне.', ...coordinates('находится в Лондоне'),
       explanation: 'Надёжные источники единодушно размещают Эйфелеву башню на Марсовом поле в Париже, Франция. Утверждение о Лондоне противоречит доказательствам.',
       why_verdict: ['Claim содержит проверяемое утверждение о геолокации.', 'Официальный источник называет Champ de Mars, Paris, France.', 'Независимый справочный источник подтверждает ту же локацию.', 'Ни один источник не поддерживает вариант с Лондоном.'],
@@ -32,14 +32,14 @@ const DEMO_ANALYSIS = {
       ],
     },
     {
-      id: 3, type: 'numerical', verdict: 'partially_supported', confidence: 0.96,
+      id: 3, type: 'numerical', verdict: 'partially_supported', confidence: 0.96, evidence_sufficiency: 'DIRECT',
       text: 'Высота Эйфелевой башни составляет 324 метра.', ...coordinates('Её высота составляет 324 метра'),
       explanation: '324 метра — исторически употребляемая цифра, но официальная текущая высота вместе с антеннами составляет 330 метров. Число требует контекста и даты.',
       why_verdict: ['Числовой claim сопоставлен с текущей официальной спецификацией.', 'Источник подтверждает, что у башни была высота 324 м в прежних описаниях.', 'Текущая официальная цифра — 330 м вместе с антеннами.', 'Формулировка без даты и уточнения высоты неполна.'],
       sources: [{ title: 'The Eiffel Tower in figures', domain: 'toureiffel.paris', url: 'https://www.toureiffel.paris/en/the-monument/key-figures', snippet: 'Today, the Eiffel Tower is 330 metres high, including its antennas.', quality: 'Primary source', freshness: 'Official reference', stance: 'CONTRADICTS' }],
     },
     {
-      id: 4, type: 'comparative', verdict: 'contradicted', confidence: 0.99,
+      id: 4, type: 'comparative', verdict: 'contradicted', confidence: 0.99, evidence_sufficiency: 'COMBINED',
       text: 'В 2024 году Эйфелева башня оставалась самым высоким сооружением в мире.', ...coordinates('в 2024 году она оставалась самым высоким сооружением в мире'),
       explanation: 'Это утверждение противоречит данным о Burj Khalifa: его высота 828 метров, что существенно больше высоты Эйфелевой башни.',
       why_verdict: ['Сравнительный claim привязан к 2024 году.', 'Проверка требует источника с актуальным мировым рекордом.', 'Официальная страница Burj Khalifa называет высоту 828 м и мировой рекорд с 2010 года.', 'Доказательство прямо исключает Эйфелеву башню из позиции самого высокого сооружения.'],
@@ -62,6 +62,13 @@ const STANCES = {
   contradicts: { label: 'Противоречит', tone: 'negative' },
   neutral: { label: 'Контекст', tone: 'neutral' },
   insufficient: { label: 'Недостаточно', tone: 'warning' },
+};
+
+const EVIDENCE_SUFFICIENCY = {
+  direct: { label: 'Прямое доказательство', shortLabel: 'DIRECT', description: 'Источник прямо подтверждает или опровергает claim.', tone: 'direct' },
+  combined: { label: 'Комбинация источников', shortLabel: 'COMBINED', description: 'Вывод получен из нескольких связанных источников или предпосылок.', tone: 'combined' },
+  indirect: { label: 'Косвенное доказательство', shortLabel: 'INDIRECT', description: 'Доказательства связаны с claim косвенно и требуют осторожной интерпретации.', tone: 'indirect' },
+  insufficient: { label: 'Недостаточно доказательств', shortLabel: 'INSUFFICIENT', description: 'Доказательств недостаточно — claim получает статус UNVERIFIED.', tone: 'insufficient' },
 };
 
 const PROCESS_STEPS = [
@@ -92,6 +99,7 @@ function normalizeAnalysis(payload) {
       id: claim.id ?? index + 1,
       verdict: String(claim.verdict || 'unverified').toLowerCase(),
       confidence: Number(claim.confidence ?? 0),
+      evidence_sufficiency: String(claim.evidence_sufficiency || (String(claim.verdict || '').toLowerCase() === 'unverified' ? 'INSUFFICIENT' : 'DIRECT')).toLowerCase(),
       sources: Array.isArray(claim.sources) ? claim.sources.map((source) => ({ ...source, stance: String(source.stance || 'NEUTRAL').toLowerCase() })) : [],
     })),
   };
@@ -121,6 +129,11 @@ function Brand() { return <a className="brand" href="#top" aria-label="Senim AI 
 function StatusPill({ verdict, compact = false }) {
   const status = VERDICTS[verdict] || VERDICTS.unverified;
   return <span className={`status-pill ${status.tone} ${compact ? 'compact' : ''}`}><span className="pill-symbol"><Icon name={status.icon} size={compact ? 12 : 14} stroke={2.4} /></span>{status.label}</span>;
+}
+
+function EvidenceBadge({ sufficiency, compact = false }) {
+  const evidence = EVIDENCE_SUFFICIENCY[String(sufficiency || 'insufficient').toLowerCase()] || EVIDENCE_SUFFICIENCY.insufficient;
+  return <span className={`evidence-badge ${evidence.tone} ${compact ? 'compact' : ''}`} title={evidence.description}><Icon name="source" size={compact ? 12 : 14} stroke={2.15} /><span>{compact ? evidence.shortLabel : evidence.label}</span></span>;
 }
 
 function ScoreRing({ score }) {
@@ -165,7 +178,8 @@ function markdownReport(result, originalText) {
   const lines = ['# Senim AI — отчёт о проверке', '', `**Анализ:** \`${result.analysis_id || 'analysis'}\``, result.timestamp ? `**Время:** ${formatDate(result.timestamp)}` : '', result.processing_time_ms ? `**Обработка:** ${formatDuration(result.processing_time_ms)}` : '', '', '## Исходный ответ AI', '', `> ${originalText.replace(/\n/g, '\n> ')}`, '', `## Итог — ${Math.round(result.summary.verification_score * 100)}% trust score`, ''];
   result.claims.forEach((claim) => {
     const verdict = VERDICTS[claim.verdict] || VERDICTS.unverified;
-    lines.push(`### ${verdict.markdown}`, '', `**Claim ${claim.id}:** ${claim.text}`, claim.original_quote ? `> Фрагмент: “${claim.original_quote}”` : '', '', `**Объяснение:** ${claim.explanation || 'Не предоставлено.'}`, '');
+    const evidence = EVIDENCE_SUFFICIENCY[claim.evidence_sufficiency] || EVIDENCE_SUFFICIENCY.insufficient;
+    lines.push(`### ${verdict.markdown}`, '', `**Claim ${claim.id}:** ${claim.text}`, claim.original_quote ? `> Фрагмент: “${claim.original_quote}”` : '', '', `**Доказательная достаточность:** ${evidence.shortLabel} — ${evidence.label}.`, '', `**Объяснение:** ${claim.explanation || 'Не предоставлено.'}`, '');
     const steps = getWhySteps(claim.why_verdict);
     if (steps.length) { lines.push('**Почему такой вердикт:**'); steps.forEach((step, index) => lines.push(`${index + 1}. ${step}`)); lines.push(''); }
     if (claim.sources?.length) { lines.push('**Источники:**'); claim.sources.forEach((source) => lines.push(`- [${source.title || source.domain}](${source.url}) — **${String(source.stance || 'NEUTRAL').toUpperCase()}**${source.snippet ? `: ${source.snippet}` : ''}`)); lines.push(''); }
@@ -217,7 +231,7 @@ function OriginalTextPanel({ sourceText, claims }) { return <section className="
 
 function SourceCard({ source }) { const initial = (source.domain || source.title || '?').replace(/^www\./, '').charAt(0).toUpperCase(); const stance = STANCES[source.stance] || STANCES.neutral; return <a className="source-card" href={source.url} target="_blank" rel="noreferrer"><span className="source-letter">{initial}</span><span className="source-content"><span className="source-meta"><b>{source.domain || 'Источник'}</b><span><em>{source.quality || 'Источник'}</em><em className={`stance ${stance.tone}`}>{stance.label}</em></span></span><strong>{source.title || 'Открыть источник'}</strong>{source.snippet && <small>“{source.snippet}”</small>}<span className="source-bottom"><span><Icon name="clock" size={12} /> {source.freshness || 'Проверено при анализе'}</span><span>Открыть <Icon name="external" size={13} /></span></span></span></a>; }
 
-function AskWhy({ claim }) { const steps = getWhySteps(claim.why_verdict); if (!steps.length) return null; return <div className="why-panel"><div className="why-title"><span><Icon name="target" size={16} /> Ask Why</span><small>цепочка проверки</small></div><ol>{steps.map((step, index) => <li key={`${claim.id}-${index}`}><span>{String(index + 1).padStart(2, '0')}</span><p>{step}</p></li>)}</ol></div>; }
+function AskWhy({ claim }) { const steps = getWhySteps(claim.why_verdict); const evidence = EVIDENCE_SUFFICIENCY[claim.evidence_sufficiency] || EVIDENCE_SUFFICIENCY.insufficient; return <div className="claim-explainability"><div className={`evidence-panel ${evidence.tone}`}><div><span className="detail-label"><Icon name="source" size={16} /> Доказательная достаточность</span><p>{evidence.description}</p></div><EvidenceBadge sufficiency={claim.evidence_sufficiency} /></div>{steps.length > 0 && <div className="why-panel"><div className="why-title"><span><Icon name="target" size={16} /> Ask Why</span><small>цепочка проверки</small></div><ol>{steps.map((step, index) => <li key={`${claim.id}-${index}`}><span>{String(index + 1).padStart(2, '0')}</span><p>{step}</p></li>)}</ol></div>}</div>; }
 
 function ClaimCard({ claim, open, onToggle, index }) {
   const status = VERDICTS[claim.verdict] || VERDICTS.unverified;
@@ -227,7 +241,7 @@ function ClaimCard({ claim, open, onToggle, index }) {
 
 function ClaimResults({ result }) { const [openClaim, setOpenClaim] = useState(result.claims[0]?.id); useEffect(() => setOpenClaim(result.claims[0]?.id), [result]); return <section className="claims-section result-section" id="claims" aria-labelledby="claims-title"><div className="claims-heading"><div><p className="eyebrow">Evidence map</p><h2 id="claims-title">Каждое утверждение — <em>отдельно.</em></h2><p>Вместо общего «верю / не верю» — точная карта доказательств для каждого факта.</p></div><span className="claims-count"><Icon name="layers" size={17} /> {result.claims.length} claims</span></div><div className="claims-list">{result.claims.map((claim, index) => <ClaimCard claim={claim} key={claim.id} index={index} open={openClaim === claim.id} onToggle={() => setOpenClaim(openClaim === claim.id ? null : claim.id)} />)}</div></section>; }
 
-function Principles() { return <section className="principles" id="how"><div className="principles-top"><p className="eyebrow">Почему это работает</p><h2>Не угадываем правду.<br /><em>Показываем путь к ней.</em></h2><p>LLM не является источником истины: он помогает сравнить claim с внешними доказательствами и открыто объяснить свой вывод.</p></div><div className="principle-grid"><article><span className="principle-icon"><Icon name="layers" size={23} /></span><strong>Atomic claims</strong><p>Разделяем длинный ответ на независимые, проверяемые кусочки.</p></article><article><span className="principle-icon"><Icon name="source" size={23} /></span><strong>Source stance</strong><p>Видно не только ссылку, но и то, подтверждает ли она claim.</p></article><article><span className="principle-icon"><Icon name="target" size={23} /></span><strong>Ask Why</strong><p>Пошаговая логика проверки делает verdict понятным и проверяемым.</p></article></div></section>; }
+function Principles() { return <section className="principles" id="how"><div className="principles-top"><p className="eyebrow">Почему это работает</p><h2>Не угадываем правду.<br /><em>Показываем путь к ней.</em></h2><p>LLM не является источником истины: он помогает сравнить claim с внешними доказательствами и открыто объяснить свой вывод.</p></div><div className="principle-grid"><article><span className="principle-icon"><Icon name="layers" size={23} /></span><strong>Atomic claims</strong><p>Разделяем длинный ответ на независимые, проверяемые кусочки.</p></article><article><span className="principle-icon"><Icon name="source" size={23} /></span><strong>Source stance</strong><p>Видно не только ссылку, но и то, подтверждает ли она claim.</p></article><article><span className="principle-icon"><Icon name="shield" size={23} /></span><strong>Evidence strength</strong><p>DIRECT, COMBINED, INDIRECT или INSUFFICIENT — без скрытых допущений.</p></article><article><span className="principle-icon"><Icon name="target" size={23} /></span><strong>Ask Why</strong><p>Пошаговая логика проверки делает verdict понятным и проверяемым.</p></article></div></section>; }
 
 function App() {
   const [text, setText] = useState(STARTER_TEXT);

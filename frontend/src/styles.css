@@ -163,3 +163,25 @@ nav { gap:42px; margin-right:auto; margin-left:auto; }nav a { color:#5b5953; fon
 
 @media (max-width:900px) { .hero.hero-focused { padding-bottom:76px; }.hero-vista { height:560px; }.proof-workspace { width:min(100%,calc(100% - 6px)); }.workspace-input textarea { min-height:264px; }.principles { padding-top:32px; } }
 @media (max-width:620px) { .hero.hero-focused { padding-bottom:60px; }.hero-vista { height:485px; }.proof-workspace { margin-top:52px; }.workspace-input textarea { min-height:248px; }.principles { padding-top:28px; } }
+
+/* Evidence sufficiency: the verdict says what happened; this layer says how strongly it is proven. */
+.evidence-badge { display:inline-flex; align-items:center; gap:6px; width:max-content; max-width:100%; padding:6px 9px; border:1px solid transparent; border-radius:999px; font-size:9px; font-weight:800; letter-spacing:.015em; line-height:1.2; }
+.evidence-badge.direct { color:#2d755a; border-color:#bcdccb; background:#e8f4ed; }
+.evidence-badge.combined { color:#576f94; border-color:#cbd7e8; background:#edf2f8; }
+.evidence-badge.indirect { color:#966018; border-color:#ead3a6; background:#fbf2df; }
+.evidence-badge.insufficient { color:#78695a; border-color:#ded5c9; background:#f4f0e8; }
+.evidence-badge.compact { padding:4px 6px; font:500 8px 'DM Mono',monospace; }
+.claim-explainability { margin:0 0 17px; }
+.evidence-panel { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin:0 0 12px; padding:13px 14px; border:1px solid #dce7df; border-radius:13px; background:linear-gradient(135deg,#f7fbf8,#f0f6f1); }
+.evidence-panel .detail-label { color:#517a68; }
+.evidence-panel p { max-width:500px; margin:7px 0 0; color:#5f6962; font-size:10px; line-height:1.55; }
+.evidence-panel.combined { border-color:#d7e0eb; background:linear-gradient(135deg,#f7f9fc,#eff4fa); }.evidence-panel.combined .detail-label { color:#536d90; }
+.evidence-panel.indirect { border-color:#ecdab4; background:linear-gradient(135deg,#fffaf0,#fbf2df); }.evidence-panel.indirect .detail-label { color:#946119; }
+.evidence-panel.insufficient { border-color:#e2d8cb; background:linear-gradient(135deg,#fcfaf6,#f4efe8); }.evidence-panel.insufficient .detail-label { color:#746555; }
+.principle-grid { grid-template-columns:repeat(4,1fr); }
+@media (max-width:900px) { .principle-grid { grid-template-columns:repeat(2,1fr); } }
+@media (max-width:620px) { .principle-grid { grid-template-columns:1fr; }.evidence-panel { align-items:stretch; flex-direction:column; gap:10px; }.evidence-badge { width:max-content; } }
+
+/* A quiet announcement strip keeps the landing page's information hierarchy close to the Tavily reference. */
+.site-header::before { content:'Senim AI · проверяйте ответы AI через внешние источники и объяснимые verdicts'; display:flex; align-items:center; justify-content:center; min-height:38px; padding:7px 20px; color:#21493b; background:#9fc9b8; font-size:12px; font-weight:600; letter-spacing:-.01em; text-align:center; }
+@media (max-width:620px) { .site-header::before { min-height:34px; padding:7px 14px; font-size:10px; } }
