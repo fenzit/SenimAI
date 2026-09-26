@@ -99,7 +99,6 @@ async def export_markdown(analysis: AnalyzeResponse) -> Dict[str, str]:
         "VERIFICATION_ERROR": "⚠️ VERIFICATION INTERRUPTED (Service Error)",
     }
 
-    score_pct = int(analysis.summary.verification_score * 100)
     overall_verdict_badge = analysis.summary.overall_verdict or "MIXED"
     summary_line = analysis.summary.summary_line or f"{analysis.summary.supported} supported · {analysis.summary.contradicted} contradicted"
     confidence_label = analysis.summary.evidence_confidence_label or "Medium"
@@ -113,8 +112,8 @@ async def export_markdown(analysis: AnalyzeResponse) -> Dict[str, str]:
     lines = [
         f"# 🛡️ AI Trust Verification Report — ID: `{analysis.analysis_id}`",
         f"## 📋 Result: `{summary_line}`",
-        f"**Verdict:** `{overall_verdict_badge}` | **Verified Coverage:** `{analysis.summary.verified_claims_count}/{analysis.summary.total_claims} claims` | **Evidence Status:** `{analysis.summary.evidence_status}`",
-        f"**Evidence Confidence:** `{confidence_label}` ({int(analysis.summary.average_confidence * 100)}%) | **Accuracy of Verified Claims:** `{score_pct}%`",
+        f"**Verdict:** `{overall_verdict_badge}` | **Verified Claims:** `{analysis.summary.verified_claims_count}/{analysis.summary.total_claims}` | **Evidence Status:** `{analysis.summary.evidence_status}`",
+        f"**Evidence Confidence:** `{confidence_label}`",
         "",
         "### 📊 Summary Breakdown",
         f"- 🟢 **Supported (Confirmed):** {analysis.summary.supported}",
