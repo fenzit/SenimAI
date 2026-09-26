@@ -190,7 +190,11 @@ function ReportActions({ result, originalText }) {
 }
 
 function HeroWorkspace({ text, setText, mode, setMode, status, error, handleAnalyze, useExample, isLiveAvailable }) {
-  const focusAnalyzer = () => document.getElementById('ai-answer')?.focus({ preventScroll: false });
+  const focusAnalyzer = () => {
+    const input = document.getElementById('ai-answer');
+    input?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    window.setTimeout(() => input?.focus({ preventScroll: true }), 480);
+  };
   return <section className="hero hero-focused" id="demo"><div className="hero-vista" /><div className="hero-glow" />
     <div className="hero-copy"><h1>Проверяйте ответы AI<br /><em>с доказательствами.</em></h1><p className="hero-lede">Senim AI находит конкретные утверждения, сопоставляет их с независимыми источниками и показывает, почему им можно или нельзя доверять.</p><div className="hero-actions"><button className="hero-primary" onClick={focusAnalyzer}>Начать проверку <Icon name="arrow" size={17} /></button><a href="#how" className="hero-secondary"><Icon name="shield" size={15} /> Как это работает</a></div></div>
     <div className="proof-workspace"><div className="workspace-top"><div className="workspace-title"><span className="workspace-dot" /> Проверка ответа</div><div className="mode-switch" aria-label="Режим проверки"><span>Режим</span><button className={mode === 'demo' ? 'active' : ''} onClick={() => setMode('demo')}>Демо</button><button className={mode === 'live' ? 'active' : ''} onClick={() => setMode('live')} disabled={!isLiveAvailable} title={isLiveAvailable ? 'Подключённый FastAPI' : 'Подключите VITE_API_BASE_URL, чтобы включить Live API'}>Live API</button></div></div>
