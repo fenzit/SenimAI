@@ -321,7 +321,7 @@ class CuratedTechDocsProvider(SearchProvider):
         },
         # 6. PostgreSQL B-Tree Indexes & LIKE Pattern Matching
         {
-            "keywords": ["postgresql", "postgres", "b-tree", "like", "wildcard", "индекс", "индексаци", "поиск"],
+            "keywords": ["like", "wildcard", "%", "pattern"],
             "entity": "postgresql",
             "results": [
                 SearchResult(
@@ -347,7 +347,70 @@ class CuratedTechDocsProvider(SearchProvider):
                 ),
             ],
         },
-        # 7. HTTP Statelessness & Session State
+        # 7. PostgreSQL Index Performance & Query Overhead (Generic Indexing)
+        {
+            "keywords": ["index", "performance", "faster", "overhead", "ускор", "быстрее", "индекс", "производительн"],
+            "entity": "postgresql",
+            "results": [
+                SearchResult(
+                    title="PostgreSQL Documentation: Indexing and Performance Overhead — postgresql.org",
+                    url="https://www.postgresql.org/docs/current/indexes-intro.html",
+                    domain="postgresql.org",
+                    snippet="Indexes are not always beneficial: for small tables, sequential scans are faster. Creating indexes also adds overhead to data modification operations (INSERT, UPDATE, DELETE), and query planners may ignore indexes if a large fraction of table rows match.",
+                    score=0.99,
+                ),
+                SearchResult(
+                    title="When PostgreSQL Indexes Can Slow Down Queries — GeeksforGeeks",
+                    url="https://www.geeksforgeeks.org/when-indexes-slow-down-queries-in-postgresql/",
+                    domain="geeksforgeeks.org",
+                    snippet="While indexes speed up lookups with high selectivity, they do not always make queries faster. Sequential scans are preferred for retrieving large percentages of rows, and unused indexes degrade write performance due to index maintenance costs.",
+                    score=0.96,
+                ),
+            ],
+        },
+        # 8. PostgreSQL JSONB & GIN Indexes
+        {
+            "keywords": ["jsonb", "json", "gin", "индекс"],
+            "entity": "postgresql",
+            "results": [
+                SearchResult(
+                    title="PostgreSQL Documentation: GIN Indexes and JSONB Types — postgresql.org",
+                    url="https://www.postgresql.org/docs/current/gin.html",
+                    domain="postgresql.org",
+                    snippet="GIN indexes are inverted indexes designed for handling composite data types such as JSONB, arrays, and full-text search. GIN allows fast containment queries (@>) over complex JSONB structures.",
+                    score=0.99,
+                ),
+                SearchResult(
+                    title="Using GIN Indexes for JSONB in PostgreSQL — GeeksforGeeks",
+                    url="https://www.geeksforgeeks.org/using-gin-indexes-for-jsonb-in-postgresql/",
+                    domain="geeksforgeeks.org",
+                    snippet="PostgreSQL GIN indexes provide efficient indexing for JSONB documents, significantly accelerating jsonb containment and existence operators compared to standard B-Tree indexing.",
+                    score=0.96,
+                ),
+            ],
+        },
+        # 9. PostgreSQL Transactions & ACID Isolation
+        {
+            "keywords": ["transaction", "transactions", "транзак", "acid", "atomicity", "isolation", "атомарн"],
+            "entity": "postgresql",
+            "results": [
+                SearchResult(
+                    title="PostgreSQL Documentation: Transaction Isolation & ACID — postgresql.org",
+                    url="https://www.postgresql.org/docs/current/transaction-iso.html",
+                    domain="postgresql.org",
+                    snippet="PostgreSQL ensures transaction atomicity, consistency, isolation, and durability (ACID). A transaction is an all-or-nothing unit of work: if any step fails or is aborted, all changes made within the transaction are rolled back.",
+                    score=0.99,
+                ),
+                SearchResult(
+                    title="Understanding Transactions and Isolation in PostgreSQL — GeeksforGeeks",
+                    url="https://www.geeksforgeeks.org/transactions-and-isolation-in-postgresql/",
+                    domain="geeksforgeeks.org",
+                    snippet="In PostgreSQL, transactions provide atomicity and isolation guarantees using Multi-Version Concurrency Control (MVCC) across Read Committed, Repeatable Read, and Serializable isolation levels.",
+                    score=0.96,
+                ),
+            ],
+        },
+        # 10. HTTP Statelessness & Session State
         {
             "keywords": ["http", "stateless", "session", "state", "протокол", "сесси", "состояни", "cookie"],
             "entity": "http",

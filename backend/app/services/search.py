@@ -140,42 +140,97 @@ class SearchService:
     def _heuristic_queries(self, claim: Claim, context_text: Optional[str] = None) -> tuple[List[str], str]:
         text = claim.text.strip()
         cleaned = re.sub(r'["\';:]', "", text)
-        lower_context = (context_text or "").lower()
         lower_claim = cleaned.lower()
+        lower_context = (context_text or "").lower()
 
         queries = []
         primary_entity = ""
 
-        if "python" in lower_context or "python" in lower_claim or "asyncio" in lower_claim or "cpython" in lower_claim:
+        # 1. Detect Domain: Prioritize current claim.text over context_text
+        if any(w in lower_claim for w in ["python", "asyncio", "cpython", "tuple", "кортеж", "список"]):
             primary_entity = "Python"
-            if "asyncio" in lower_claim:
+        elif any(w in lower_claim for w in ["postgres", "postgresql", "psql", "jsonb", "gin"]):
+            primary_entity = "PostgreSQL"
+        elif any(w in lower_claim for w in ["http", "stateless"]):
+            primary_entity = "HTTP"
+        elif "python" in lower_context:
+            primary_entity = "Python"
+        elif "postgres" in lower_context or "postgresql" in lower_context:
+            primary_entity = "PostgreSQL"
+        elif "http" in lower_context:
+            primary_entity = "HTTP"
+
+        # 2. Concept Routing based strictly on concepts present in the CURRENT CLAIM
+        if primary_entity == "PostgreSQL":
+            has_btree = "b-tree" in lower_claim or "btree" in lower_claim
+            has_like = "like" in lower_claim or "wildcard" in lower_claim or "%" in lower_claim
+            has_jsonb = "jsonb" in lower_claim or "json" in lower_claim or "gin" in lower_claim
+            has_tx = any(w in lower_claim for w in ["transaction", "transactions", "транзак", "acid", "isolation", "атомарн"])
+            has_perf = any(w in lower_claim for w in ["index", "индекс", "faster", "быстрее", "ускор", "performance", "производительн", "always", "всегда"])
+
+            if has_btree and has_like:
+                queries.append("site:postgresql.org/docs PostgreSQL B-tree index LIKE pattern matching")
+                queries.append("site:postgresql.org/docs PostgreSQL B-tree LIKE leading wildcard index")
+                queries.append("PostgreSQL B-tree pattern matching LIKE wildcard")
+            elif has_like:
+                queries.append("site:postgresql.org/docs PostgreSQL pattern matching LIKE")
+                queries.append("site:postgresql.org/docs PostgreSQL LIKE leading wildcard index")
+            elif has_btree:
+                queries.append("site:postgresql.org/docs PostgreSQL B-tree index")
+                queries.append("site:postgresql.org/docs PostgreSQL B-tree index performance")
+            elif has_jsonb:
+                queries.append("site:postgresql.org/docs PostgreSQL JSONB index")
+                queries.append("site:postgresql.org/docs PostgreSQL GIN JSONB index")
+            elif has_tx:
+                queries.append("site:postgresql.org/docs PostgreSQL transactions")
+                queries.append("site:postgresql.org/docs PostgreSQL transaction isolation levels")
+            elif has_perf:
+                queries.append("site:postgresql.org/docs PostgreSQL indexes query performance")
+                queries.append("site:postgresql.org/docs PostgreSQL index performance overhead")
+                queries.append("PostgreSQL indexes query performance")
+            else:
+                queries.append(f"site:postgresql.org/docs PostgreSQL {cleaned}")
+                queries.append(f"PostgreSQL {cleaned}")
+
+        elif primary_entity == "Python":
+            has_asyncio = "asyncio" in lower_claim or "await" in lower_claim or "coroutine" in lower_claim or ("асинхрон" in lower_claim and "python" in lower_claim)
+            has_is = " is " in f" {lower_claim} " or "identity" in lower_claim or "равенств" in lower_claim or "сравнен" in lower_claim or "==" in lower_claim
+            has_cache = any(w in lower_claim for w in ["256", "целые числа", "кэш", "interning", "small integer", "cpython"])
+            has_tuple = "кортеж" in lower_claim or "tuple" in lower_claim
+            has_list = "список" in lower_claim or "списк" in lower_claim or "list" in lower_claim
+            has_args = any(w in lower_claim for w in ["переда", "аргумент", "параметр", "pass by", "call by"])
+
+            if has_asyncio:
                 queries.append("site:docs.python.org asyncio cooperative event loop single thread CPU bound blocking")
                 queries.append("Python asyncio non-blocking event loop CPU bound concurrency")
-            if " is " in f" {lower_claim} " or "равенств" in lower_claim or "сравнен" in lower_claim or "identity" in lower_claim:
+            elif has_is:
                 queries.append("Python is operator identity vs == equality object address")
                 queries.append("site:docs.python.org/3/reference/expressions.html is operator identity vs equality")
-            elif "256" in lower_claim or "целые числа" in lower_claim or "кэш" in lower_claim or "interning" in lower_claim:
+            elif has_cache:
                 queries.append("site:docs.python.org CPython small integer caching -5 to 256 identity")
                 queries.append("CPython small integer caching implementation detail language specification")
-            elif "кортеж" in lower_claim or "tuple" in lower_claim:
+            elif has_tuple:
                 queries.append("site:docs.python.org tuple immutable sequence data model")
                 queries.append("Python tuple immutable object reference")
-            elif "список" in lower_claim or "списк" in lower_claim or "list" in lower_claim:
+            elif has_list:
                 queries.append("site:docs.python.org list mutable sequence in place")
                 queries.append("Python function argument passing mutable list reference")
-            elif "переда" in lower_claim or "аргумент" in lower_claim or "ссылк" in lower_claim:
+            elif has_args:
                 queries.append("site:docs.python.org FAQ argument passing assignment object sharing")
                 queries.append("Python call by object reference pass by assignment")
-            if not queries:
+            else:
                 queries.append(f"site:docs.python.org {cleaned}")
-        elif "postgres" in lower_context or "postgres" in lower_claim or "b-tree" in lower_claim or "like" in lower_claim:
-            primary_entity = "PostgreSQL"
-            queries.append("site:postgresql.org/docs B-tree index operator LIKE leading wildcard %")
-            queries.append("PostgreSQL documentation B-tree pattern matching LIKE '%pattern' anchor")
-        elif "http" in lower_context or "http" in lower_claim or "stateless" in lower_claim:
-            primary_entity = "HTTP"
-            queries.append("site:ietf.org RFC HTTP stateless protocol session state cookies")
-            queries.append("developer.mozilla.org HTTP stateless session state")
+                queries.append(f"Python {cleaned}")
+
+        elif primary_entity == "HTTP":
+            has_stateless = any(w in lower_claim for w in ["stateless", "session", "сесси", "состояни", "cookie"])
+            if has_stateless:
+                queries.append("site:ietf.org RFC HTTP stateless protocol session state cookies")
+                queries.append("developer.mozilla.org HTTP stateless session state")
+            else:
+                queries.append(f"site:ietf.org RFC HTTP {cleaned}")
+                queries.append(f"developer.mozilla.org HTTP {cleaned}")
+
         else:
             queries.append(cleaned)
 
