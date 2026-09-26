@@ -1,0 +1,12 @@
+{
+  "name": "temporal_claim",
+  "description": "Historical timeline assertion",
+  "input": {
+    "text": "Первый искусственный спутник Земли был запущен в 1957 году.",
+    "language": "ru"
+  },
+  "expected": {
+    "min_claims": 1,
+    "has_supported": true
+  }
+}

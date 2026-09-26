@@ -1,0 +1,14 @@
+{
+  "name": "fully_correct",
+  "description": "Well-established facts with high credibility and solid evidence",
+  "input": {
+    "text": "Python был создан Гвидо ван Россумом и впервые выпущен в 1991 году.",
+    "language": "ru"
+  },
+  "expected": {
+    "min_claims": 2,
+    "has_supported": true,
+    "has_contradicted": false,
+    "min_score": 0.8
+  }
+}

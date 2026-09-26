@@ -1,0 +1,13 @@
+{
+  "name": "obvious_hallucination",
+  "description": "Blatant chronological / factual hallucination",
+  "input": {
+    "text": "Первый человек высадился на Марсе в июле 1969 года.",
+    "language": "ru"
+  },
+  "expected": {
+    "min_claims": 1,
+    "has_contradicted": true,
+    "max_score": 0.4
+  }
+}

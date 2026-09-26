@@ -1,0 +1,11 @@
+{
+  "name": "conflicting_sources",
+  "description": "Controversial ranking or varying estimates across sources",
+  "input": {
+    "text": "Население Токио составляет ровно 37 миллионов человек.",
+    "language": "ru"
+  },
+  "expected": {
+    "min_claims": 1
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "partially_correct",
+  "description": "Composite fact with true date but false location",
+  "input": {
+    "text": "Эйфелева башня была построена в 1889 году и находится в Лондоне.",
+    "language": "ru"
+  },
+  "expected": {
+    "min_claims": 2,
+    "has_supported": true,
+    "has_contradicted": true
+  }
+}

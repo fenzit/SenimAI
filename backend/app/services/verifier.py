@@ -7,6 +7,7 @@ from app.schemas.claim import (
     ClaimResult,
     ClaimType,
     Source,
+    SourceStance,
     SupportingEvidence,
     Verdict,
 )
@@ -27,6 +28,8 @@ CRITICAL INTEGRITY RULES:
 7. If the evidence confirms one part of the claim but refutes or leaves unproven another part, return 'PARTIALLY_SUPPORTED'.
 8. If the evidence clearly and directly confirms the claim, return 'SUPPORTED'.
 9. Provide a clear, objective explanation in the requested language ({language}) citing specific details from the evidence.
+10. Provide a 'why_verdict' breakdown explaining the exact logical chain (e.g. "Found N sources: Source 1 states X, Source 2 confirms Y...").
+11. For each source evaluated, classify its stance: 'SUPPORTS', 'CONTRADICTS', 'NEUTRAL', or 'INSUFFICIENT'.
 
 VERDICTS:
 - SUPPORTED
@@ -41,6 +44,13 @@ Return JSON only:
   "verdict": "SUPPORTED | CONTRADICTED | PARTIALLY_SUPPORTED | UNVERIFIED | CONFLICTING",
   "confidence": 0.0 to 1.0,
   "explanation": "Clear explanation of the verdict based on the evidence in {language}",
+  "why_verdict": "Step-by-step reasoning breakdown explaining why this verdict was reached",
+  "source_stances": [
+    {
+      "source_index": 1,
+      "stance": "SUPPORTS | CONTRADICTS | NEUTRAL | INSUFFICIENT"
+    }
+  ],
   "supporting_evidence": [
     {
       "source_index": 1,
@@ -75,8 +85,16 @@ class ClaimVerifier:
                     if language == "ru"
                     else "This statement is a subjective opinion or value judgement and cannot be objectively fact-checked."
                 ),
+                why_verdict=(
+                    "Субъективные мнения, предпочтения и эмоциональные оценки не содержат проверяемых фактов."
+                    if language == "ru"
+                    else "Subjective opinions and personal valuations lack objectively verifiable factual claims."
+                ),
                 sources=[],
                 supporting_evidence=[],
+                original_quote=claim.original_quote,
+                start_char=claim.start_char,
+                end_char=claim.end_char,
             )
 
         # If no sources found at all
@@ -92,8 +110,16 @@ class ClaimVerifier:
                     if language == "ru"
                     else "Insufficient external evidence found to reliably verify or refute this claim."
                 ),
+                why_verdict=(
+                    "Поисковая система не вернула авторитетных источников, содержащих информацию по данному утверждению."
+                    if language == "ru"
+                    else "Search returned no authoritative sources containing relevant evidence."
+                ),
                 sources=[],
                 supporting_evidence=[],
+                original_quote=claim.original_quote,
+                start_char=claim.start_char,
+                end_char=claim.end_char,
             )
 
         evidence_text = EvidenceProcessor.format_evidence_for_prompt(sources)
@@ -124,6 +150,24 @@ class ClaimVerifier:
                 "explanation",
                 "Результат проверки на основе найденных источников.",
             )
+            why_verdict = result.get("why_verdict", explanation)
+
+            # Update source stances
+            stances_map = {}
+            for st in result.get("source_stances", []):
+                s_idx = int(st.get("source_index", 0))
+                s_val = str(st.get("stance", "NEUTRAL")).upper()
+                try:
+                    stances_map[s_idx] = SourceStance(s_val)
+                except ValueError:
+                    stances_map[s_idx] = SourceStance.NEUTRAL
+
+            updated_sources: List[Source] = []
+            for i, src in enumerate(sources, start=1):
+                src_copy = src.model_copy()
+                if i in stances_map:
+                    src_copy.stance = stances_map[i]
+                updated_sources.append(src_copy)
 
             supporting_ev = []
             for item in result.get("supporting_evidence", []):
@@ -141,8 +185,12 @@ class ClaimVerifier:
                 verdict=verdict,
                 confidence=confidence,
                 explanation=explanation,
-                sources=sources,
+                why_verdict=why_verdict,
+                sources=updated_sources,
                 supporting_evidence=supporting_ev,
+                original_quote=claim.original_quote,
+                start_char=claim.start_char,
+                end_char=claim.end_char,
             )
 
         except Exception as e:
@@ -158,6 +206,10 @@ class ClaimVerifier:
                     if language == "ru"
                     else f"Verification error: {str(e)[:100]}. Manual check recommended."
                 ),
+                why_verdict=f"Ошибка обработки: {str(e)[:100]}",
                 sources=sources,
                 supporting_evidence=[],
+                original_quote=claim.original_quote,
+                start_char=claim.start_char,
+                end_char=claim.end_char,
             )

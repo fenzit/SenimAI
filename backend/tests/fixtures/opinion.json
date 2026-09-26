@@ -1,0 +1,11 @@
+{
+  "name": "opinion",
+  "description": "Subjective value judgment with no objective factual basis",
+  "input": {
+    "text": "Python — самый красивый и элегантный язык программирования на свете.",
+    "language": "ru"
+  },
+  "expected": {
+    "has_not_fact_checkable": true
+  }
+}

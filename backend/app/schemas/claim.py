@@ -26,12 +26,22 @@ class SourceTier(str, Enum):
     LOW = "LOW"
 
 
+class SourceStance(str, Enum):
+    SUPPORTS = "SUPPORTS"
+    CONTRADICTS = "CONTRADICTS"
+    NEUTRAL = "NEUTRAL"
+    INSUFFICIENT = "INSUFFICIENT"
+
+
 class Source(BaseModel):
     title: str = Field(..., description="Page or article title")
     url: str = Field(..., description="Link to source")
     domain: str = Field(..., description="Domain name (e.g. wikipedia.org)")
     snippet: str = Field(..., description="Extracted relevant text excerpt")
     quality: SourceTier = Field(default=SourceTier.MEDIUM, description="Heuristic quality tier")
+    stance: Optional[SourceStance] = Field(
+        default=SourceStance.NEUTRAL, description="Source stance towards claim"
+    )
 
 
 class SupportingEvidence(BaseModel):
@@ -43,6 +53,11 @@ class Claim(BaseModel):
     id: int
     text: str = Field(..., description="Atomic extracted claim")
     type: ClaimType = Field(default=ClaimType.FACTUAL, description="Category of claim")
+    original_quote: Optional[str] = Field(
+        default=None, description="Verbatim quote or excerpt from the original text"
+    )
+    start_char: Optional[int] = Field(default=None, description="Start offset in original text")
+    end_char: Optional[int] = Field(default=None, description="End offset in original text")
 
 
 class ClaimResult(BaseModel):
@@ -56,3 +71,12 @@ class ClaimResult(BaseModel):
     supporting_evidence: Optional[List[SupportingEvidence]] = Field(
         default=None, description="Detailed source breakdown"
     )
+    original_quote: Optional[str] = Field(
+        default=None, description="Verbatim excerpt in original text for frontend highlighting"
+    )
+    start_char: Optional[int] = Field(default=None, description="Start offset in original text")
+    end_char: Optional[int] = Field(default=None, description="End offset in original text")
+    why_verdict: Optional[str] = Field(
+        default=None, description="Detailed explainability breakdown for 'Ask Why' feature"
+    )
+

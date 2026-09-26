@@ -10,13 +10,14 @@ CLAIM_EXTRACTION_SYSTEM_PROMPT = """You are a precise factual claim extraction s
 Your task is to analyze the input text and extract independent, atomic factual claims.
 
 RULES:
-1. Split compound statements into separate, atomic claims (e.g. "Python was made by Guido in 1991" -> 1. "Python was made by Guido", 2. "Python was released in 1991").
+1. Split compound statements into separate, atomic claims (e.g. "Python was made by Guido in 1991 in London" -> 1. "Python was made by Guido", 2. "Python was released in 1991", 3. "Python was created in London").
 2. Keep each claim independently verifiable.
 3. Preserve the original language of the text.
 4. Do NOT invent information or change original meaning.
 5. Identify subjective opinions or non-verifiable statements and classify them as 'opinion'.
-6. Ignore greetings, generic conversational filler, and rhetorical questions.
-7. Return valid JSON only conforming to the schema below.
+6. Extract 'original_quote' - the exact or near-exact phrase/subclause from the original text corresponding to this claim.
+7. Ignore greetings, generic conversational filler, and rhetorical questions.
+8. Return valid JSON only conforming to the schema below.
 
 Allowed claim types:
 - factual: standard factual statements
@@ -31,7 +32,8 @@ JSON OUTPUT SCHEMA:
     {
       "id": 1,
       "text": "Extracted atomic claim in original language",
-      "type": "factual | numerical | temporal | comparative | opinion"
+      "type": "factual | numerical | temporal | comparative | opinion",
+      "original_quote": "Exact subclause from the text"
     }
   ]
 }
@@ -69,11 +71,23 @@ class ClaimExtractor:
                 except ValueError:
                     ctype = ClaimType.FACTUAL
 
+                quote = item.get("original_quote", "").strip() or None
+                start_char, end_char = None, None
+                if quote and quote in text:
+                    start_char = text.find(quote)
+                    end_char = start_char + len(quote)
+                elif claim_text in text:
+                    start_char = text.find(claim_text)
+                    end_char = start_char + len(claim_text)
+
                 claims.append(
                     Claim(
                         id=int(item.get("id", idx)),
                         text=claim_text,
                         type=ctype,
+                        original_quote=quote,
+                        start_char=start_char,
+                        end_char=end_char,
                     )
                 )
 
@@ -95,11 +109,16 @@ class ClaimExtractor:
 
         claims: List[Claim] = []
         for idx, sentence in enumerate(sentences[:max_claims], start=1):
+            start_pos = text.find(sentence) if sentence in text else None
+            end_pos = (start_pos + len(sentence)) if start_pos is not None else None
             claims.append(
                 Claim(
                     id=idx,
                     text=sentence,
                     type=ClaimType.FACTUAL,
+                    original_quote=sentence,
+                    start_char=start_pos,
+                    end_char=end_pos,
                 )
             )
         return claims

@@ -116,6 +116,9 @@ class Analyzer:
 
         # Scenario 2: Obvious Hallucination / Contradiction (Mars)
         if "марс" in lower_text or "mars" in lower_text:
+            quote = "Первый человек высадился на Марсе в 1969 году"
+            start_pos = text.find(quote) if quote in text else 0
+            end_pos = start_pos + len(quote) if quote in text else len(text)
             claims = [
                 ClaimResult(
                     id=1,
@@ -124,6 +127,10 @@ class Analyzer:
                     verdict=Verdict.CONTRADICTED,
                     confidence=0.98,
                     explanation="Источники опровергают это утверждение: пилотируемых высадок людей на Марс не было. В 1969 году миссия Аполлон-11 высадилась на Луне.",
+                    why_verdict="Официальные исторические архивы NASA и хроники космических полетов подтверждают, что на Марсе работали только автоматические аппараты, а первая высадка человека на Луну состоялась в 1969 году.",
+                    original_quote=quote if quote in text else text,
+                    start_char=start_pos,
+                    end_char=end_pos,
                     sources=[
                         Source(
                             title="NASA Human Spaceflight History",
@@ -131,6 +138,7 @@ class Analyzer:
                             domain="nasa.gov",
                             snippet="No human has landed on Mars. NASA Apollo 11 landed astronauts on the Moon in July 1969.",
                             quality=SourceTier.HIGH,
+                            stance=SourceStance.CONTRADICTS,
                         ),
                         Source(
                             title="Mars Exploration Timeline - Space.com",
@@ -138,12 +146,13 @@ class Analyzer:
                             domain="space.com",
                             snippet="Only robotic probes and rovers (Curiosity, Perseverance) have operated on the surface of Mars.",
                             quality=SourceTier.MEDIUM,
+                            stance=SourceStance.CONTRADICTS,
                         ),
                     ],
                     supporting_evidence=[
                         SupportingEvidence(
                             source_index=1,
-                            reason="NASA официально фиксирует отсутствие пилотируемых высадок на Марс.",
+                            reason="NASA официально подтверждает отсутствие пилотируемых высадок на Марс.",
                         )
                     ],
                 )
@@ -151,6 +160,8 @@ class Analyzer:
 
         # Scenario 3: Partially Supported / Location error (Eiffel Tower in London)
         elif "эйфелев" in lower_text or "eiffel" in lower_text:
+            q1 = "построена в 1889 году"
+            q2 = "находится в Лондоне"
             claims = [
                 ClaimResult(
                     id=1,
@@ -159,6 +170,10 @@ class Analyzer:
                     verdict=Verdict.SUPPORTED,
                     confidence=0.97,
                     explanation="Источники подтверждают, что Эйфелева башня была открыта в 1889 году к Всемирной выставке.",
+                    why_verdict="Официальный сайт монумента и энциклопедии единогласно указывают дату постройки — 1889 год.",
+                    original_quote=q1 if q1 in text else None,
+                    start_char=text.find(q1) if q1 in text else None,
+                    end_char=text.find(q1) + len(q1) if q1 in text else None,
                     sources=[
                         Source(
                             title="Official Eiffel Tower History",
@@ -166,6 +181,7 @@ class Analyzer:
                             domain="toureiffel.paris",
                             snippet="Built for the 1889 Exposition Universelle by Gustave Eiffel.",
                             quality=SourceTier.HIGH,
+                            stance=SourceStance.SUPPORTS,
                         )
                     ],
                 ),
@@ -176,6 +192,10 @@ class Analyzer:
                     verdict=Verdict.CONTRADICTED,
                     confidence=0.99,
                     explanation="Источники опровергают данное утверждение: Эйфелева башня расположена в Париже (Франция), а не в Лондоне.",
+                    why_verdict="Географические справочники и Википедия подтверждают нахождение башни на Марсовом поле в Париже, опровергая локацию в Лондоне.",
+                    original_quote=q2 if q2 in text else None,
+                    start_char=text.find(q2) if q2 in text else None,
+                    end_char=text.find(q2) + len(q2) if q2 in text else None,
                     sources=[
                         Source(
                             title="Eiffel Tower - Wikipedia",
@@ -183,6 +203,7 @@ class Analyzer:
                             domain="wikipedia.org",
                             snippet="The Eiffel Tower is a wrought-iron lattice tower on the Champ de Mars in Paris, France.",
                             quality=SourceTier.HIGH,
+                            stance=SourceStance.CONTRADICTS,
                         )
                     ],
                 ),
@@ -193,6 +214,8 @@ class Analyzer:
                     verdict=Verdict.PARTIALLY_SUPPORTED,
                     confidence=0.82,
                     explanation="Эйфелева башня является самым посещаемым платным монументом в мире, однако среди всех достопримечательностей лидерство варьируется в зависимости от методологии подсчета.",
+                    why_verdict="Источники называют объект одним из лидеров мирового туризма, но статус 'абсолютно самый посещаемый' зависит от методики учета (платный/бесплатный вход).",
+                    original_quote=None,
                     sources=[
                         Source(
                             title="World Tourism Rankings & Monuments",
@@ -200,6 +223,7 @@ class Analyzer:
                             domain="britannica.com",
                             snippet="It is one of the most visited monuments in the world, with over 6 million visitors annually.",
                             quality=SourceTier.HIGH,
+                            stance=SourceStance.SUPPORTS,
                         )
                     ],
                 ),
@@ -207,6 +231,8 @@ class Analyzer:
 
         # Scenario 1 (Default): Normal supported fact with Python
         else:
+            q1 = "создан Гвидо ван Россумом"
+            q2 = "в 1991 году"
             claims = [
                 ClaimResult(
                     id=1,
@@ -215,6 +241,10 @@ class Analyzer:
                     verdict=Verdict.SUPPORTED,
                     confidence=0.96,
                     explanation="Официальная документация и история языка подтверждают авторство Гвидо ван Россума.",
+                    why_verdict="Документация Python.org и биография автора подтверждают разработку языка Гвидо ван Россумом в институте CWI.",
+                    original_quote=q1 if q1 in text else None,
+                    start_char=text.find(q1) if q1 in text else None,
+                    end_char=text.find(q1) + len(q1) if q1 in text else None,
                     sources=[
                         Source(
                             title="Python.org History & FAQ",
@@ -222,6 +252,7 @@ class Analyzer:
                             domain="python.org",
                             snippet="Python was created in the early 1990s by Guido van Rossum at Stichting Mathematisch Centrum in the Netherlands.",
                             quality=SourceTier.HIGH,
+                            stance=SourceStance.SUPPORTS,
                         ),
                         Source(
                             title="Guido van Rossum - Wikipedia",
@@ -229,6 +260,7 @@ class Analyzer:
                             domain="wikipedia.org",
                             snippet="Guido van Rossum is a Dutch programmer best known as the creator of the Python programming language.",
                             quality=SourceTier.HIGH,
+                            stance=SourceStance.SUPPORTS,
                         ),
                     ],
                 ),
@@ -239,6 +271,10 @@ class Analyzer:
                     verdict=Verdict.SUPPORTED,
                     confidence=0.95,
                     explanation="Первая публичная версия Python 0.9.0 была выпущена в феврале 1991 года.",
+                    why_verdict="Архивы релизов alt.sources подтверждают первую публикацию версии 0.9.0 в феврале 1991 года.",
+                    original_quote=q2 if q2 in text else None,
+                    start_char=text.find(q2) if q2 in text else None,
+                    end_char=text.find(q2) + len(q2) if q2 in text else None,
                     sources=[
                         Source(
                             title="A Brief Timeline of Python Releases",
@@ -246,6 +282,7 @@ class Analyzer:
                             domain="python.org",
                             snippet="Python 0.9.0 was published to alt.sources in February 1991.",
                             quality=SourceTier.HIGH,
+                            stance=SourceStance.SUPPORTS,
                         )
                     ],
                 ),
@@ -256,6 +293,7 @@ class Analyzer:
                     verdict=Verdict.NOT_FACT_CHECKABLE,
                     confidence=1.0,
                     explanation="Оценка 'лучший язык для всех задач' является субъективным мнением, а не объективным проверяемым фактом.",
+                    why_verdict="Субъективные оценочные суждения не имеют проверяемой фактологической базы.",
                     sources=[],
                 ),
             ]
