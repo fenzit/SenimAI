@@ -151,19 +151,21 @@ class SearchService:
             if "asyncio" in lower_claim:
                 queries.append("site:docs.python.org asyncio cooperative event loop single thread CPU bound blocking")
                 queries.append("Python asyncio non-blocking event loop CPU bound concurrency")
-            if "256" in lower_claim or "целые числа" in lower_claim or "кэш" in lower_claim:
+            if " is " in f" {lower_claim} " or "равенств" in lower_claim or "сравнен" in lower_claim or "identity" in lower_claim:
+                queries.append("Python is operator identity vs == equality object address")
+                queries.append("site:docs.python.org/3/reference/expressions.html is operator identity vs equality")
+            elif "256" in lower_claim or "целые числа" in lower_claim or "кэш" in lower_claim or "interning" in lower_claim:
                 queries.append("site:docs.python.org CPython small integer caching -5 to 256 identity")
                 queries.append("CPython small integer caching implementation detail language specification")
-            if "кортеж" in lower_claim or "tuple" in lower_claim:
+            elif "кортеж" in lower_claim or "tuple" in lower_claim:
                 queries.append("site:docs.python.org tuple immutable sequence data model")
                 queries.append("Python tuple immutable object reference")
-            if "список" in lower_claim or "списк" in lower_claim or "list" in lower_claim:
+            elif "список" in lower_claim or "списк" in lower_claim or "list" in lower_claim:
                 queries.append("site:docs.python.org list mutable sequence in place")
                 queries.append("Python function argument passing mutable list reference")
-            if "переда" in lower_claim or "значени" in lower_claim or "ссылк" in lower_claim:
+            elif "переда" in lower_claim or "аргумент" in lower_claim or "ссылк" in lower_claim:
                 queries.append("site:docs.python.org FAQ argument passing assignment object sharing")
-            if "is" in lower_claim or "равенств" in lower_claim or "сравнен" in lower_claim:
-                queries.append("site:docs.python.org/3/reference/expressions.html is operator identity vs equality")
+                queries.append("Python call by object reference pass by assignment")
             if not queries:
                 queries.append(f"site:docs.python.org {cleaned}")
         elif "postgres" in lower_context or "postgres" in lower_claim or "b-tree" in lower_claim or "like" in lower_claim:
@@ -191,18 +193,22 @@ class SearchService:
         candidates: List[SearchResult] = []
         seen_urls = set()
 
-        for q in queries:
+        async def _query_search(q: str):
             try:
-                results = await self.provider.search(query=q, limit=limit + 2)
-                for r in results:
+                return await self.provider.search(query=q, limit=limit + 2)
+            except Exception as e:
+                logger.error(f"Search provider error on query '{q}': {e}")
+                return []
+
+        search_tasks = [_query_search(q) for q in queries]
+        query_results = await asyncio.gather(*search_tasks, return_exceptions=True)
+
+        for batch in query_results:
+            if isinstance(batch, list):
+                for r in batch:
                     if r.url not in seen_urls and len(r.snippet.strip()) > 20:
                         seen_urls.add(r.url)
                         candidates.append(r)
-            except Exception as e:
-                logger.error(f"Search provider error on query '{q}': {e}")
-
-            if len(candidates) >= limit * 3:
-                break
 
         # Rerank and filter noise
         top_candidates = RelevanceReranker.rerank(
@@ -213,3 +219,4 @@ class SearchService:
         )
 
         return EvidenceProcessor.to_sources(top_candidates)
+
