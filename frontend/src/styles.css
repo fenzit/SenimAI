@@ -151,3 +151,15 @@ nav { gap:42px; margin-right:auto; margin-left:auto; }nav a { color:#5b5953; fon
 @media (prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior:auto !important; animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; } }
 @media (max-width:900px) { .proof-workspace { width:min(100%,calc(100% - 6px)); margin-top:65px; }.workspace-input textarea { min-height:235px; font-size:16px; } }
 @media (max-width:620px) { .proof-workspace { margin-top:52px; padding:7px; border-radius:18px; }.workspace-top { min-height:43px; padding:7px 7px 10px 9px; }.input-caption { padding:11px 12px; }.workspace-input textarea { min-height:232px; padding:18px 16px; font-size:15px; }.workspace-bottom { padding:12px 3px 5px; }.workspace-examples { padding:12px 4px 3px; }.principles,.original-text,.claims-section,.result-cta,.summary-card { animation:none; } }
+
+/* Let the hero landscape breathe into the next section instead of ending as a hard rectangle. */
+.hero.hero-focused { position:relative; isolation:isolate; padding-bottom:96px; background:transparent; }
+.hero.hero-focused::before { content:''; position:absolute; z-index:-2; top:0; bottom:0; left:50%; width:100vw; pointer-events:none; transform:translateX(-50%); background:linear-gradient(180deg,#fcfbf7 0%,#fcfbf7 38%,#f5f7f1 71%,#fcfbf7 100%); }
+.hero-vista { right:auto; bottom:0; left:50%; width:100vw; height:620px; transform:translateX(-50%); background:linear-gradient(180deg,rgba(243,247,239,0) 0%,rgba(224,237,224,.16) 18%,rgba(129,183,162,.38) 68%,rgba(120,174,153,.2) 84%,rgba(252,251,247,0) 100%); }
+.hero-vista::after { background:linear-gradient(180deg,#fcfbf7 0%,rgba(252,251,247,.82) 14%,rgba(252,251,247,.12) 43%,rgba(252,251,247,.18) 67%,#fcfbf7 100%); }
+.proof-workspace { width:min(1060px,calc(100% - 18px)); margin-top:78px; }
+.workspace-input textarea { min-height:304px; }
+.principles { padding-top:38px; }
+
+@media (max-width:900px) { .hero.hero-focused { padding-bottom:76px; }.hero-vista { height:560px; }.proof-workspace { width:min(100%,calc(100% - 6px)); }.workspace-input textarea { min-height:264px; }.principles { padding-top:32px; } }
+@media (max-width:620px) { .hero.hero-focused { padding-bottom:60px; }.hero-vista { height:485px; }.proof-workspace { margin-top:52px; }.workspace-input textarea { min-height:248px; }.principles { padding-top:28px; } }
