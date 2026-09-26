@@ -34,6 +34,7 @@ VITE_API_BASE_URL=http://localhost:8000
 - `ClaimResult.original_quote`, `start_char`, `end_char` — подсвечивают точный фрагмент исходного ответа и ведут к нужной карточке claim.
 - `ClaimResult.why_verdict` — массив шагов или строка с объяснением для блока **Ask Why**.
 - `Source.stance` — `SUPPORTS`, `CONTRADICTS`, `NEUTRAL` или `INSUFFICIENT`; отображается как позиция источника по отношению к claim.
+- `ClaimResult.evidence_sufficiency` — классификация силы доказательств: `DIRECT`, `COMBINED`, `INDIRECT` или `INSUFFICIENT`. Она выводится в карточке claim и попадает в Markdown-отчёт; при отсутствии поля старые ответы остаются совместимы.
 - `AnalyzeResponse.processing_time_ms` и `timestamp` — показываются в summary и попадают в экспортируемый Markdown-отчёт.
 
 После анализа пользователь может скопировать готовый Markdown-отчёт или скачать его как `.md`.
