@@ -96,6 +96,7 @@ async def export_markdown(analysis: AnalyzeResponse) -> Dict[str, str]:
         "UNVERIFIED": "⚪ UNVERIFIED (Insufficient Evidence)",
         "NOT_FACT_CHECKABLE": "🟣 NOT FACT-CHECKABLE",
         "CONFLICTING": "🟠 CONFLICTING",
+        "VERIFICATION_ERROR": "⚠️ VERIFICATION INTERRUPTED (Service Error)",
     }
 
     score_pct = int(analysis.summary.verification_score * 100)
@@ -123,6 +124,7 @@ async def export_markdown(analysis: AnalyzeResponse) -> Dict[str, str]:
         f"- ⚪ **Unverified (Insufficient Evidence):** {analysis.summary.unverified}",
         f"- 🟣 **Subjective Opinions:** {analysis.summary.not_fact_checkable}",
         f"- 🟠 **Conflicting Sources:** {analysis.summary.conflicting}",
+        f"- ⚠️ **Interrupted / Errors:** {analysis.summary.verification_errors}",
         "",
         "---",
         "### 🔍 Detailed Claims Analysis",

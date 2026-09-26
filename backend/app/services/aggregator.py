@@ -49,6 +49,7 @@ class Aggregator:
             Verdict.UNVERIFIED: 0,
             Verdict.NOT_FACT_CHECKABLE: 0,
             Verdict.CONFLICTING: 0,
+            Verdict.VERIFICATION_ERROR: 0,
         }
 
         high_quality_sources = 0
@@ -67,7 +68,7 @@ class Aggregator:
 
         avg_conf = round(total_conf / total, 2) if total > 0 else 0.0
 
-        checkable_total = total - counts[Verdict.NOT_FACT_CHECKABLE]
+        checkable_total = total - counts[Verdict.NOT_FACT_CHECKABLE] - counts[Verdict.VERIFICATION_ERROR]
         verified_claims_count = (
             counts[Verdict.SUPPORTED]
             + counts[Verdict.CONTRADICTED]
@@ -79,7 +80,7 @@ class Aggregator:
         # Evidence Status
         if verified_claims_count == 0 and checkable_total > 0:
             evidence_status = "INSUFFICIENT"
-        elif counts[Verdict.UNVERIFIED] > 0:
+        elif counts[Verdict.UNVERIFIED] > 0 or counts[Verdict.VERIFICATION_ERROR] > 0:
             evidence_status = "PARTIAL"
         else:
             evidence_status = "SUFFICIENT"
@@ -126,6 +127,8 @@ class Aggregator:
             parts.append(f"{counts[Verdict.NUANCED]} nuanced")
         if counts[Verdict.UNVERIFIED] > 0:
             parts.append(f"{counts[Verdict.UNVERIFIED]} insufficient evidence")
+        if counts[Verdict.VERIFICATION_ERROR] > 0:
+            parts.append(f"{counts[Verdict.VERIFICATION_ERROR]} interrupted")
         if counts[Verdict.NOT_FACT_CHECKABLE] > 0:
             parts.append(f"{counts[Verdict.NOT_FACT_CHECKABLE]} opinion")
         summary_line = " · ".join(parts) if parts else "0 claims"
@@ -147,6 +150,7 @@ class Aggregator:
             unverified=counts[Verdict.UNVERIFIED],
             not_fact_checkable=counts[Verdict.NOT_FACT_CHECKABLE],
             conflicting=counts[Verdict.CONFLICTING],
+            verification_errors=counts[Verdict.VERIFICATION_ERROR],
             verified_claims_count=verified_claims_count,
             evidence_status=evidence_status,
             verification_score=score,

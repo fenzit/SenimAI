@@ -32,6 +32,7 @@ class Summary(BaseModel):
     unverified: int = Field(0, description="Claims without sufficient external evidence")
     not_fact_checkable: int = Field(0, description="Subjective opinions or non-verifiable statements")
     conflicting: int = Field(0, description="Claims where reliable sources contradict each other")
+    verification_errors: int = Field(0, description="Claims where verification was interrupted due to service error")
     verified_claims_count: int = Field(
         0, description="Number of claims with sufficient evidence to evaluate"
     )

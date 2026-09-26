@@ -12,12 +12,17 @@ Your task is to analyze the input text and extract independent, atomic factual c
 RULES:
 1. Split compound and causal statements into separate atomic claims:
    - When a sentence connects a premise and an inference/consequence (e.g., using 'therefore', 'because', 'поэтому', 'поскольку', 'так как', 'вследствие'), ALWAYS extract BOTH the premise and the deduction as separate claims!
-   - Example: "HTTP is stateless, therefore the server cannot store client state between requests" ->
-     Claim 1: "HTTP is a stateless protocol"
-     Claim 2: "An HTTP server cannot store information about previous client requests between requests"
-   - Example: "asyncio executes CPU-bound tasks in parallel because await switches tasks without blocking" ->
-     Claim 1: "asyncio allows executing multiple CPU-bound tasks in parallel in a single thread"
-     Claim 2: "await switches execution between tasks without blocking the thread in asyncio"
+   - When a sentence asserts a language guarantee or universality (e.g. 'но это является гарантированной особенностью языка Python', 'это гарантировано спецификацией', 'автоматически для любых запросов'), extract that guarantee assertion as its own atomic claim so it can be verified independently!
+   - Example 1: "HTTP is stateless, therefore the server cannot store client state between requests" ->
+     Claim 1: "HTTP is a stateless protocol" (PREMISE)
+     Claim 2: "An HTTP server cannot store information about previous client requests between requests" (DEDUCTION)
+   - Example 2: "In CPython small integers are cached, therefore 256 is 256 may return True, but this is a guaranteed feature of the Python language" ->
+     Claim 1: "In CPython small integers are cached" (PREMISE)
+     Claim 2: "Comparing 256 is 256 may return True in CPython" (DEDUCTION)
+     Claim 3: "Integer caching behavior with is is a guaranteed specification of the Python language itself" (DEDUCTION)
+   - Example 3: "asyncio executes CPU-bound tasks in parallel because await switches tasks without blocking" ->
+     Claim 1: "asyncio allows executing multiple CPU-bound tasks in parallel in a single thread" (DEDUCTION)
+     Claim 2: "await switches execution between tasks without blocking the thread in asyncio" (PREMISE)
 2. Keep each claim independently verifiable.
 3. Preserve the original language of the text.
 4. Do NOT invent information or change original meaning.

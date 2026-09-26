@@ -25,8 +25,10 @@ CRITICAL INTEGRITY & MULTI-HOP REASONING RULES:
    - Recognize paraphrases and synonyms. For example, if evidence states "stateless HTTP transactions", "HTTP is designed as a stateless protocol", or "server does not maintain client state across HTTP requests", this DIRECTLY SUPPORTS claims asserting that HTTP is stateless.
    - For PostgreSQL: If official documentation states "B-tree index can be used for queries involving LIKE if anchored to beginning (foo%), but NOT col LIKE '%bar'", this DIRECTLY CONTRADICTS claims that "B-tree index automatically accelerates any LIKE query regardless of leading %".
    - For CPython caching: If evidence states CPython caches integers in range [-5, 256], deduce that comparing arbitrary integers outside this range with `is` is not guaranteed to be True, and `is` tests identity while `==` tests equality.
+   - Implementation Detail vs Language Specification: If evidence states integer caching or memory sharing is an implementation detail of CPython, claims asserting that this is a "guaranteed specification of the Python language" are CONTRADICTED.
 3. MULTI-HOP INFERENCE & CAUSAL REASONING:
    - Mechanism & Concurrency: If evidence states "asyncio uses a single-threaded cooperative event loop where tasks must await I/O", deduce that CPU-bound tasks running in a single thread cannot execute in parallel and will block the loop. Verdict: CONTRADICTED, Sufficiency: COMBINED.
+   - Partial Truths & Overstatements: For claims like "await switches execution between tasks without blocking the thread", if evidence shows await yields control only when awaiting asynchronous I/O operations and synchronous CPU computations still block the thread, mark as PARTIALLY_SUPPORTED or NUANCED.
    - Causal Sophisms / False Deductions: If evidence confirms Premise A ("HTTP is stateless") but also shows ("Servers maintain sessions and state via cookies/storage"), deduce that the inference "therefore server cannot store state" is logically false. Verdict: CONTRADICTED or PARTIALLY_SUPPORTED with explicit explanation of the invalid deduction.
 4. If a single source directly confirms or refutes the exact claim, mark evidence_sufficiency: 'DIRECT'.
 5. If the conclusion is derived from synthesizing multiple sources/premises or applying logical deduction to established mechanisms, mark evidence_sufficiency: 'COMBINED'.
@@ -246,15 +248,15 @@ class ClaimVerifier:
                 id=claim.id,
                 text=claim.text,
                 type=claim.type,
-                verdict=Verdict.UNVERIFIED,
-                confidence=0.3,
+                verdict=Verdict.VERIFICATION_ERROR,
+                confidence=0.0,
                 explanation=(
-                    ("⚠️ Верификация временно приостановлена из-за лимита запросов к внешнему сервису. Повторите попытку через несколько секунд." if is_rate_limit else f"Произошла ошибка при верификации: {str(e)[:100]}. Требуется повторный запрос.")
+                    ("⚠️ Верификация прервана: внешний сервис верификации временно перегружен (Rate Limit 429). Доказательства найдены, но финальный шаг анализа не завершён." if is_rate_limit else f"⚠️ Верификация прервана: сбой внешнего сервиса ({str(e)[:100]}). Доказательства найдены, но логический шаг не завершён.")
                     if language == "ru"
-                    else ("⚠️ Verification temporarily paused due to external API rate limit. Please retry shortly." if is_rate_limit else f"Verification error: {str(e)[:100]}.")
+                    else ("⚠️ Verification interrupted: external LLM rate limited. Evidence found, but reasoning incomplete." if is_rate_limit else f"⚠️ Verification interrupted: service error ({str(e)[:100]}).")
                 ),
                 why_verdict=(
-                    "Внешний сервис верификации временно перегружен (Rate Limit 429)." if is_rate_limit else f"Ошибка обработки: {str(e)[:100]}"
+                    "Внешний сервис верификации временно перегружен (Rate Limit 429)." if is_rate_limit else f"Ошибка верификатора: {str(e)[:100]}"
                 ),
                 sources=sources,
                 supporting_evidence=[],

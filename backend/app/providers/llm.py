@@ -66,7 +66,13 @@ class OpenAILLMProvider(LLMProvider):
 
 
 class GeminiLLMProvider(LLMProvider):
-    FALLBACK_MODELS = ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-2.0-flash", "gemini-3.5-flash-lite"]
+    FALLBACK_MODELS = [
+        "gemini-2.5-flash",
+        "gemini-2.5-flash-lite",
+        "gemini-3.5-flash-lite",
+        "gemini-3.5-flash",
+        "gemini-2.5-pro",
+    ]
 
     def __init__(
         self,
