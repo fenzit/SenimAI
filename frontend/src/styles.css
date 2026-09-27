@@ -228,3 +228,12 @@ nav { gap:42px; margin-right:auto; margin-left:auto; }nav a { color:#5b5953; fon
 
 @media (max-width:900px) { .principle-grid { gap:16px; }.principle-grid article { min-height:230px; padding:25px; }.claim-detail { padding-left:25px; }.claim-top { padding:20px; }.claim-question strong { font-size:15px; } }
 @media (max-width:620px) { .principle-grid article { min-height:0; padding:23px; }.principle-grid strong { margin-top:20px; font-size:17px; }.highlighted-answer { font-size:21px; line-height:1.68; }.highlight-token { margin:0 .025em; padding:.03em .08em .06em; }.claim-top { padding:17px 15px; }.claim-question strong { font-size:14px; }.claim-detail { padding:0 15px 20px; }.detail-grid { padding:16px 0; }.reason, .claim-facts { padding:15px; }.reason p, .claim-facts p { font-size:13px; }.evidence-panel { padding:15px; }.source-card { padding:14px; }.source-letter { width:38px; height:38px; }.source-content strong { font-size:14px; }.source-content small { font-size:12px; }.result-cta { margin-top:46px; padding:30px 24px; }.result-cta h2 { font-size:27px; }.outline-button { width:100%; } }
+
+/* The provided Senim emblem is used consistently for the product's own labels. */
+.senim-mark { display:block; flex:none; object-fit:cover; border-radius:inherit; mix-blend-mode:multiply; }
+.brand-mark.senim-mark { padding:0; border:0; background:transparent; box-shadow:none; }
+.workspace-brand-mark { width:18px; height:18px; border-radius:6px; }
+.loader-logo { overflow:hidden; padding:3px; background:#eff8f2; }
+.loader-mark { width:100%; height:100%; border-radius:12px; }
+.summary-brand-mark { width:16px; height:16px; border-radius:5px; }
+.loader-note { gap:7px; }.note-brand-mark { width:16px; height:16px; border-radius:5px; }
