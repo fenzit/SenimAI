@@ -136,10 +136,12 @@ function EvidenceBadge({ sufficiency, compact = false }) {
   return <span className={`evidence-badge ${evidence.tone} ${compact ? 'compact' : ''}`} title={evidence.description}><Icon name="source" size={compact ? 12 : 14} stroke={2.15} /><span>{compact ? evidence.shortLabel : evidence.label}</span></span>;
 }
 
-function ScoreRing({ score }) {
-  const percent = Math.round(score * 100);
-  const color = percent >= 75 ? 'var(--green)' : percent >= 45 ? 'var(--amber)' : 'var(--red)';
-  return <div className="score-ring" style={{ '--score': `${percent * 3.6}deg`, '--ring-color': color }}><div className="score-core"><strong>{percent}<small>%</small></strong><span>trust score</span></div></div>;
+function ScoreRing({ summary }) {
+  const verified = summary.verified_claims_count ?? (summary.supported + (summary.partially_supported || 0));
+  const total = summary.total_claims || 1;
+  const ratio = Math.min(1, Math.max(0, verified / total));
+  const color = summary.contradicted > 0 ? 'var(--red)' : summary.partially_supported > 0 ? 'var(--amber)' : 'var(--green)';
+  return <div className="score-ring" style={{ '--score': `${ratio * 360}deg`, '--ring-color': color }}><div className="score-core"><strong>{verified}<small>/{total}</small></strong><span>verified</span></div></div>;
 }
 
 function getWhySteps(value) {
@@ -175,7 +177,23 @@ function HighlightedText({ originalText, claims }) {
 }
 
 function markdownReport(result, originalText) {
-  const lines = ['# Senim AI — отчёт о проверке', '', `**Анализ:** \`${result.analysis_id || 'analysis'}\``, result.timestamp ? `**Время:** ${formatDate(result.timestamp)}` : '', result.processing_time_ms ? `**Обработка:** ${formatDuration(result.processing_time_ms)}` : '', '', '## Исходный ответ AI', '', `> ${originalText.replace(/\n/g, '\n> ')}`, '', `## Итог — ${Math.round(result.summary.verification_score * 100)}% trust score`, ''];
+  const summaryLine = result.summary.summary_line || (result.summary.contradicted ? `${result.summary.contradicted} опровергнуто` : 'Проверено');
+  const verifiedCount = result.summary.verified_claims_count ?? (result.summary.supported + (result.summary.partially_supported || 0));
+  const lines = [
+    '# Senim AI — отчёт о проверке',
+    '',
+    `**Анализ:** \`${result.analysis_id || 'analysis'}\``,
+    result.timestamp ? `**Время:** ${formatDate(result.timestamp)}` : '',
+    result.processing_time_ms ? `**Обработка:** ${formatDuration(result.processing_time_ms)}` : '',
+    '',
+    '## Исходный ответ AI',
+    '',
+    `> ${originalText.replace(/\n/g, '\n> ')}`,
+    '',
+    `## Результат: ${summaryLine}`,
+    `**Статус:** \`${result.summary.overall_verdict || 'MIXED'}\` | **Проверено утверждений:** \`${verifiedCount}/${result.summary.total_claims}\``,
+    '',
+  ];
   result.claims.forEach((claim) => {
     const verdict = VERDICTS[claim.verdict] || VERDICTS.unverified;
     const evidence = EVIDENCE_SUFFICIENCY[claim.evidence_sufficiency] || EVIDENCE_SUFFICIENCY.insufficient;
@@ -224,7 +242,7 @@ function AnalysisSummary({ result, sourceText, onNewAnalysis }) {
   const summary = result.summary;
   const needsReview = summary.contradicted + summary.partially_supported + summary.conflicting + summary.unverified > 0;
   const metrics = [['supported', summary.supported, 'Подтверждено'], ['contradicted', summary.contradicted, 'Опровергнуто'], ['partially_supported', summary.partially_supported, 'Частично'], ['unverified', summary.unverified + summary.conflicting, 'Неясно']].filter(([, value]) => value > 0);
-  return <section className="summary-card result-section" aria-labelledby="result-title"><div className="summary-main"><div className="summary-copy"><div className="section-kicker"><span className="live-dot" /> Анализ завершён <span className="analysis-id">#{result.analysis_id || 'analysis'}</span></div><h2 id="result-title">{needsReview ? 'Ответ требует внимания' : 'Ответ выглядит надёжным'}</h2><p>{needsReview ? 'Мы нашли конкретные места, где ответ расходится с доказательствами или требует контекста.' : 'Все найденные утверждения получили достаточное подтверждение из внешних источников.'}</p><div className="analysis-meta">{result.processing_time_ms && <span><Icon name="clock" size={14} /> {formatDuration(result.processing_time_ms)}</span>}{result.timestamp && <span><Icon name="target" size={14} /> {formatDate(result.timestamp)}</span>}</div></div><ScoreRing score={summary.verification_score} /></div><div className="metric-grid">{metrics.map(([verdict, value, label]) => <div className={`metric ${VERDICTS[verdict].tone}`} key={verdict}><span>{value}</span><small>{label}</small></div>)}<div className="metric total"><span>{summary.total_claims}</span><small>всего claims</small></div></div><div className="summary-footer"><span><Icon name="info" size={16} /> Скор — ориентир. Источники и контекст важнее одного числа.</span><div><ReportActions result={result} originalText={sourceText} /><button className="text-button" onClick={onNewAnalysis}><Icon name="reset" size={16} /> Новый анализ</button></div></div></section>;
+  return <section className="summary-card result-section" aria-labelledby="result-title"><div className="summary-main"><div className="summary-copy"><div className="section-kicker"><span className="live-dot" /> Анализ завершён <span className="analysis-id">#{result.analysis_id || 'analysis'}</span></div><h2 id="result-title">{needsReview ? 'Ответ требует внимания' : 'Ответ выглядит надёжным'}</h2><p>{needsReview ? 'Мы нашли конкретные места, где ответ расходится с доказательствами или требует контекста.' : 'Все найденные утверждения получили достаточное подтверждение из внешних источников.'}</p><div className="analysis-meta">{result.processing_time_ms && <span><Icon name="clock" size={14} /> {formatDuration(result.processing_time_ms)}</span>}{result.timestamp && <span><Icon name="target" size={14} /> {formatDate(result.timestamp)}</span>}</div></div><ScoreRing summary={summary} /></div><div className="metric-grid">{metrics.map(([verdict, value, label]) => <div className={`metric ${VERDICTS[verdict].tone}`} key={verdict}><span>{value}</span><small>{label}</small></div>)}<div className="metric total"><span>{summary.total_claims}</span><small>всего claims</small></div></div><div className="summary-footer"><span><Icon name="info" size={16} /> Источники и доказательства важнее абстрактных процентов доверия.</span><div><ReportActions result={result} originalText={sourceText} /><button className="text-button" onClick={onNewAnalysis}><Icon name="reset" size={16} /> Новый анализ</button></div></div></section>;
 }
 
 function OriginalTextPanel({ sourceText, claims }) { return <section className="original-text result-section" aria-labelledby="original-text-title"><div className="original-head"><div><p className="eyebrow">Claim highlighting</p><h2 id="original-text-title">Где именно ответ <em>теряет доверие</em></h2></div><div className="highlight-legend"><span className="positive"><i /> Подтверждено</span><span className="warning"><i /> Частично</span><span className="negative"><i /> Опровергнуто</span></div></div><div className="answer-sheet"><div className="answer-sheet-top"><span><Icon name="quote" size={15} /> Исходный ответ AI</span><small>Нажмите на фрагмент, чтобы открыть его разбор</small></div><HighlightedText originalText={sourceText} claims={claims} /></div></section>; }
@@ -253,7 +271,7 @@ function App() {
   const [step, setStep] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const isLiveAvailable = Boolean(API_BASE);
-  const scoreText = result ? `${Math.round(result.summary.verification_score * 100)}%` : null;
+  const scoreText = result ? (result.summary.summary_line || `Проверено: ${result.summary.supported}/${result.summary.total_claims}`) : null;
 
   useEffect(() => { if (status !== 'loading') return undefined; setStep(0); const timer = window.setInterval(() => setStep((current) => Math.min(current + 1, PROCESS_STEPS.length - 1)), 720); return () => window.clearInterval(timer); }, [status]);
 
