@@ -154,11 +154,33 @@ function getWhySteps(value) {
 function formatDuration(value) { return typeof value === 'number' && Number.isFinite(value) ? `${(value / 1000).toLocaleString('ru-RU', { maximumFractionDigits: 1 })} сек` : null; }
 function formatDate(value) { try { return value ? new Intl.DateTimeFormat('ru-RU', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : null; } catch { return null; } }
 
+function normalizeMatch(value) { return String(value || '').toLocaleLowerCase('ru-RU').replace(/[\s\u00a0]+/g, ' ').replace(/[«»“”"'`.,;:!?()[\]{}]/g, '').trim(); }
+
+function findTextRange(originalText, target, preferredStart) {
+  const query = String(target || '').trim();
+  if (query.length < 4) return null;
+  const exact = originalText.indexOf(query);
+  if (exact >= 0) return { start: exact, end: exact + query.length };
+  const insensitive = originalText.toLocaleLowerCase('ru-RU').indexOf(query.toLocaleLowerCase('ru-RU'));
+  if (insensitive >= 0) return { start: insensitive, end: insensitive + query.length };
+  const normalizedQuery = normalizeMatch(query);
+  const start = Number(preferredStart);
+  if (Number.isInteger(start) && start >= 0) {
+    const nearby = originalText.slice(start, start + Math.max(query.length + 40, 120));
+    if (normalizeMatch(nearby).startsWith(normalizedQuery)) return { start, end: start + query.length };
+  }
+  return null;
+}
+
 function findRange(claim, originalText) {
+  const preferredStart = Number(claim.start_char);
+  const textMatch = findTextRange(originalText, claim.original_quote, preferredStart) || findTextRange(originalText, claim.text, preferredStart);
+  if (textMatch) return textMatch;
   const start = Number(claim.start_char);
   const end = Number(claim.end_char);
-  if (Number.isInteger(start) && Number.isInteger(end) && start >= 0 && end > start && originalText.slice(start, end).trim()) return { start, end };
-  if (claim.original_quote) { const found = originalText.indexOf(claim.original_quote); if (found >= 0) return { start: found, end: found + claim.original_quote.length }; }
+  const candidate = Number.isInteger(start) && Number.isInteger(end) && start >= 0 && end > start ? originalText.slice(start, end) : '';
+  const expected = normalizeMatch(claim.original_quote || claim.text);
+  if (candidate && expected && (normalizeMatch(candidate).includes(expected) || expected.includes(normalizeMatch(candidate)))) return { start, end };
   return null;
 }
 
@@ -247,7 +269,7 @@ function AnalysisSummary({ result, sourceText, onNewAnalysis }) {
 
 function OriginalTextPanel({ sourceText, claims }) { return <section className="original-text result-section" aria-labelledby="original-text-title"><div className="original-head"><div><p className="eyebrow">Claim highlighting</p><h2 id="original-text-title">Где именно ответ <em>теряет доверие</em></h2></div><div className="highlight-legend"><span className="positive"><i /> Подтверждено</span><span className="warning"><i /> Частично</span><span className="negative"><i /> Опровергнуто</span></div></div><div className="answer-sheet"><div className="answer-sheet-top"><span><Icon name="quote" size={15} /> Исходный ответ AI</span><small>Нажмите на фрагмент, чтобы открыть его разбор</small></div><HighlightedText originalText={sourceText} claims={claims} /></div></section>; }
 
-function SourceCard({ source }) { const initial = (source.domain || source.title || '?').replace(/^www\./, '').charAt(0).toUpperCase(); const stance = STANCES[source.stance] || STANCES.neutral; return <a className="source-card" href={source.url} target="_blank" rel="noreferrer"><span className="source-letter">{initial}</span><span className="source-content"><span className="source-meta"><b>{source.domain || 'Источник'}</b><span><em>{source.quality || 'Источник'}</em><em className={`stance ${stance.tone}`}>{stance.label}</em></span></span><strong>{source.title || 'Открыть источник'}</strong>{source.snippet && <small>“{source.snippet}”</small>}<span className="source-bottom"><span><Icon name="clock" size={12} /> {source.freshness || 'Проверено при анализе'}</span><span>Открыть <Icon name="external" size={13} /></span></span></span></a>; }
+function SourceCard({ source }) { const domain = (source.domain || '').replace(/^www\./, ''); const initial = (domain || source.title || '?').charAt(0).toUpperCase(); const stance = STANCES[source.stance] || STANCES.neutral; const favicon = domain ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64` : ''; return <a className="source-card" href={source.url} target="_blank" rel="noreferrer"><span className="source-letter" aria-label={domain || 'Источник'}>{favicon && <img src={favicon} alt="" onError={(event) => { event.currentTarget.style.display = 'none'; event.currentTarget.parentElement?.classList.add('has-fallback'); }} />}<span aria-hidden="true">{initial}</span></span><span className="source-content"><span className="source-meta"><b>{domain || 'Источник'}</b><span><em>{source.quality || 'Источник'}</em><em className={`stance ${stance.tone}`}>{stance.label}</em></span></span><strong>{source.title || 'Открыть источник'}</strong>{source.snippet && <small>“{source.snippet}”</small>}<span className="source-bottom"><span><Icon name="clock" size={13} /> {source.freshness || 'Проверено при анализе'}</span><span>Открыть <Icon name="external" size={14} /></span></span></span></a>; }
 
 function AskWhy({ claim }) { const steps = getWhySteps(claim.why_verdict); const evidence = EVIDENCE_SUFFICIENCY[claim.evidence_sufficiency] || EVIDENCE_SUFFICIENCY.insufficient; return <div className="claim-explainability"><div className={`evidence-panel ${evidence.tone}`}><div><span className="detail-label"><Icon name="source" size={16} /> Доказательная достаточность</span><p>{evidence.description}</p></div><EvidenceBadge sufficiency={claim.evidence_sufficiency} /></div>{steps.length > 0 && <div className="why-panel"><div className="why-title"><span><Icon name="target" size={16} /> Ask Why</span><small>цепочка проверки</small></div><ol>{steps.map((step, index) => <li key={`${claim.id}-${index}`}><span>{String(index + 1).padStart(2, '0')}</span><p>{step}</p></li>)}</ol></div>}</div>; }
 

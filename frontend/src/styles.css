@@ -201,3 +201,30 @@ nav { gap:42px; margin-right:auto; margin-left:auto; }nav a { color:#5b5953; fon
   .proof-workspace .analyze-button { padding:10px 16px; }
   .workspace-examples { display:none; }
 }
+
+/* Result readability: make the evidence map presentation-sized, not dashboard-sized. */
+.principle-grid { gap:22px; margin-top:58px; }
+.principle-grid article { min-height:268px; padding:31px; border-radius:20px; box-shadow:0 10px 26px rgba(44,65,55,.035); }
+.principle-icon { width:52px; height:52px; border-radius:15px; }
+.principle-grid strong { margin-top:29px; font-size:18px; letter-spacing:-.025em; }
+.principle-grid p { margin-top:11px; font-size:14px; line-height:1.7; }
+
+.highlighted-answer { color:#3f403c; font-size:clamp(22px,2.15vw,32px); font-weight:500; line-height:1.72; letter-spacing:-.034em; }
+.highlight-token { display:inline; margin:0 .05em; padding:.04em .13em .07em; color:inherit; border:0; border-bottom:2px solid transparent; border-radius:5px; background:transparent; box-decoration-break:clone; -webkit-box-decoration-break:clone; font:inherit; line-height:inherit; letter-spacing:inherit; vertical-align:baseline; appearance:none; -webkit-appearance:none; cursor:pointer; transition:background-color .18s ease, border-color .18s ease; }
+.highlight-token:hover { transform:none; filter:brightness(.96); }
+.highlight-token.positive { border-color:#559e81; background-color:rgba(163,215,190,.34); }
+.highlight-token.warning { border-color:#d4962f; background-color:rgba(246,203,123,.34); }
+.highlight-token.negative { border-color:#ce6f68; background-color:rgba(238,158,151,.31); }
+.highlight-token.neutral { border-color:#8fa2b6; background-color:rgba(183,199,215,.3); }
+.highlight-token sup { position:relative; top:-.55em; margin-left:4px; vertical-align:baseline; font:700 10px 'DM Mono',monospace; }
+
+.claim-card { border-radius:20px; }.claim-top { gap:18px; padding:23px 25px; }.claim-number { width:38px; height:38px; border-radius:12px; font-size:11px; }.claim-type { margin-bottom:6px; font-size:9px; }.claim-question strong { font-size:16px; line-height:1.5; }.claim-question small { margin-top:8px; font-size:11px; }.claim-confidence { font-size:11px; }.status-pill { padding:7px 10px 7px 7px; font-size:11px; }.status-pill.compact { font-size:10px; }.pill-symbol { width:21px; height:21px; }.claim-detail { padding:0 25px 28px 90px; }.detail-grid { gap:18px; padding:23px 0; }.reason, .claim-facts { padding:20px; border-radius:15px; }.detail-label { font-size:12px; }.reason p, .claim-facts p { margin-top:11px; font-size:14px; line-height:1.7; }.confidence-bar { margin-top:19px; font-size:10px; }.confidence-bar > div { height:6px; }.confidence-bar b { font-size:10px; }.fact-tags { gap:7px; margin-top:16px; }.fact-tags span { padding:5px 7px; font-size:9px; }.sources-heading { padding:17px 0; font-size:14px; }.sources-heading b { font-size:11px; }.sources-list { gap:12px; }
+
+.evidence-panel { gap:20px; padding:17px 19px; border-radius:15px; }.evidence-panel p { margin-top:9px; font-size:13px; line-height:1.6; }.evidence-badge { padding:8px 11px; font-size:11px; }.evidence-badge.compact { padding:5px 7px; font-size:9px; }.why-title { padding:14px 17px; font-size:12px; }.why-panel li { grid-template-columns:32px 1fr; gap:11px; padding:13px 17px; }.why-panel li > span { width:23px; height:23px; font-size:9px; }.why-panel li p { font-size:13px; line-height:1.6; }
+
+.source-card { padding:18px; border-radius:16px; }.source-card > span { gap:14px; }.source-letter { width:42px; height:42px; overflow:hidden; border:1px solid #d6e5dc; border-radius:12px; background:#eef5f0; }.source-letter img { display:block; width:25px; height:25px; object-fit:contain; }.source-letter > span { display:none; width:100%; height:100%; place-items:center; color:#fffefa; background:#637a96; font:700 15px Georgia,serif; }.source-letter.has-fallback > span { display:grid; }.source-meta b { font-size:12px; }.source-meta em { padding:4px 6px; border-radius:5px; font-size:9px; }.source-content strong { margin:8px 0 6px; font-size:15px; line-height:1.4; }.source-content small { font-size:13px; line-height:1.6; }.source-bottom { margin-top:10px; padding-top:10px; font-size:10px; }
+
+.result-cta { position:relative; overflow:hidden; margin-top:68px; padding:42px 44px; color:#254a3d; border:1px solid #b9d8c7; border-radius:24px; background:linear-gradient(135deg,#eff8f2 0%,#dcefe4 100%); box-shadow:0 17px 38px rgba(45,94,73,.1); animation:none; }.result-cta::before { content:''; position:absolute; top:-110px; right:8%; width:280px; height:280px; border-radius:50%; background:rgba(255,255,255,.35); pointer-events:none; }.result-cta > * { position:relative; z-index:1; }.result-cta .eyebrow { color:#5d9179; }.result-cta h2 { margin:12px 0 0; color:#24463a; font-size:clamp(28px,3vw,38px); line-height:1.12; }.result-cta h2 em { color:#37856b; }.outline-button { min-width:210px; padding:15px 19px; color:#fffefa; border-color:#2e6d57; background:#2e6d57; font-size:12px; box-shadow:0 8px 18px rgba(38,98,76,.17); }.outline-button:hover { color:#fffefa; background:#245b49; }
+
+@media (max-width:900px) { .principle-grid { gap:16px; }.principle-grid article { min-height:230px; padding:25px; }.claim-detail { padding-left:25px; }.claim-top { padding:20px; }.claim-question strong { font-size:15px; } }
+@media (max-width:620px) { .principle-grid article { min-height:0; padding:23px; }.principle-grid strong { margin-top:20px; font-size:17px; }.highlighted-answer { font-size:21px; line-height:1.68; }.highlight-token { margin:0 .025em; padding:.03em .08em .06em; }.claim-top { padding:17px 15px; }.claim-question strong { font-size:14px; }.claim-detail { padding:0 15px 20px; }.detail-grid { padding:16px 0; }.reason, .claim-facts { padding:15px; }.reason p, .claim-facts p { font-size:13px; }.evidence-panel { padding:15px; }.source-card { padding:14px; }.source-letter { width:38px; height:38px; }.source-content strong { font-size:14px; }.source-content small { font-size:12px; }.result-cta { margin-top:46px; padding:30px 24px; }.result-cta h2 { font-size:27px; }.outline-button { width:100%; } }
